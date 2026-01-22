@@ -1,21 +1,40 @@
-# Fitness Weekly Email
+# RunPlan
 
-A personalized training plan application that analyzes your fitness data from Garmin or Strava and delivers AI-powered weekly training plans to your inbox.
+Your personal running coach, powered by your data. RunPlan connects to Garmin Connect or Strava, analyzes your training and recovery metrics, and delivers personalized weekly training plans straight to your inbox.
 
 **Live App:** https://fitness-weekly-email.vercel.app
 
+## Why RunPlan?
+
+Running is personal. Your training plan should be too. RunPlan automatically syncs with your watch data to understand:
+
+- How your body is recovering (resting heart rate, sleep, stress)
+- Your current fitness level (VO2 max, recent workouts)
+- Your goals (5K PR, marathon finish, or just staying consistent)
+
+Then it builds a weekly plan that actually fits your life.
+
 ## Features
 
-- **Multi-Platform Support** - Connect Garmin Connect or Strava accounts
-- **Recovery-Aware Training** - Analyzes resting heart rate, sleep quality, body battery, and stress levels
-- **Goal-Specific Plans** - Supports race goals (5K to marathon) and general fitness goals
-- **Automated Weekly Emails** - Training plans delivered on your preferred schedule
-- **Secure Data Handling** - OAuth for Strava, encrypted session tokens for Garmin
+- **Automatic Sync** - Connect once, and RunPlan pulls your data automatically from Garmin Connect or Strava
+- **Recovery-Aware Training** - Plans adjust based on your sleep quality, resting heart rate, body battery, and stress levels
+- **Race-Specific Plans** - Training tailored for 5K, 10K, half marathon, or marathon goals
+- **Weekly Email Delivery** - Your personalized plan arrives on the day you choose
+- **Privacy First** - Your data is encrypted, never sold, and you can delete it anytime
+
+## Privacy & Security
+
+Your running data is personal. We treat it that way:
+
+- **Encrypted Storage** - All platform tokens and sensitive data are encrypted at rest
+- **Never Sold** - Your data is used only to generate your training plans
+- **You're in Control** - Delete your account and all data anytime from your dashboard
+- **Minimal Access** - We only request the permissions needed for training analysis
 
 ## Tech Stack
 
 - **Framework:** Next.js 14 (App Router)
-- **Database:** Supabase (PostgreSQL)
+- **Database:** Supabase (PostgreSQL with Row Level Security)
 - **Authentication:** Supabase Auth
 - **Email:** Resend
 - **Styling:** Tailwind CSS
@@ -25,7 +44,7 @@ A personalized training plan application that analyzes your fitness data from Ga
 ## Project Structure
 
 ```
-fitness-weekly-email/
+runplan/
 ├── app/
 │   ├── api/
 │   │   ├── config/           # User configuration API
@@ -69,8 +88,8 @@ The app uses four main tables:
 
 - **user_profiles** - User account information and preferences
 - **platform_connections** - Encrypted OAuth/session tokens for Garmin and Strava
-- **training_configs** - Training goals, targets, and email preferences
-- **email_history** - Record of sent emails
+- **training_configs** - Running goals, race targets, and email preferences
+- **email_history** - Record of sent training plan emails
 
 All tables have Row Level Security (RLS) enabled.
 
@@ -161,23 +180,24 @@ The `vercel.json` configures a daily cron job at 2 PM UTC:
 
 1. Update Site URL in Auth settings to your production URL
 2. Add production URL to Redirect URLs
+3. Configure SMTP settings with Resend for auth emails
 
 ## Training Analysis
 
-The app analyzes the following metrics:
+RunPlan analyzes the following metrics from your watch:
 
-| Metric | Purpose |
-|--------|---------|
+| Metric | How It's Used |
+|--------|---------------|
 | Resting Heart Rate | Detect fatigue and recovery trends |
 | Body Battery | Assess daily energy availability |
-| VO2 Max | Track aerobic fitness changes |
+| VO2 Max | Track aerobic fitness progression |
 | Sleep Quality | Factor rest into training load |
-| Stress Levels | Identify high-stress periods |
-| Steps | Monitor daily activity |
+| Stress Levels | Identify when to back off |
+| Recent Runs | Understand your current training load |
 
-Based on analysis, the planner adjusts:
+Based on this analysis, your weekly plan adjusts:
 - Weekly mileage targets
-- Workout intensity
+- Workout intensity (easy vs tempo vs intervals)
 - Recovery day placement
 - Long run distance
 
@@ -204,7 +224,7 @@ MIT
 
 ## Acknowledgments
 
-- [Garmin Connect](https://connect.garmin.com/) for fitness data
+- [Garmin Connect](https://connect.garmin.com/) for runner data
 - [Strava](https://www.strava.com/) for activity tracking
 - [Supabase](https://supabase.com/) for backend infrastructure
 - [Vercel](https://vercel.com/) for hosting and cron jobs
