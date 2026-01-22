@@ -30,9 +30,9 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center">
-              <span className="text-xl">🏃</span>
+              <span className="text-xl">🏃‍♂️</span>
             </div>
-            <span className="text-xl font-bold text-white">Fitness Weekly</span>
+            <span className="text-xl font-bold text-white">RunPlan</span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-slate-300 hover:text-white transition-colors font-medium">
@@ -73,20 +73,20 @@ export default function HomePage() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            <span className="text-white">Your Data.</span>
+            <span className="text-white">Your Running Data.</span>
             <br />
             <span className="bg-gradient-to-r from-orange-400 via-pink-500 to-purple-500 bg-clip-text text-transparent">
-              Smarter Training.
+              Smarter Training Plans.
             </span>
           </h1>
 
           <p className="text-xl text-slate-400 mb-6 max-w-2xl mx-auto leading-relaxed">
-            We pull your fitness data <span className="text-white font-semibold">automatically</span> from Garmin or Strava
-            and deliver personalized training plans to your inbox every week.
+            We pull your running data <span className="text-white font-semibold">automatically</span> from Garmin or Strava
+            and deliver personalized weekly training plans to your inbox.
           </p>
 
           <p className="text-lg text-slate-500 mb-10 max-w-xl mx-auto">
-            No manual entry. No spreadsheets. Just connect once and get smarter training forever.
+            No logging miles. No spreadsheets. Connect once and run smarter forever.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -123,15 +123,15 @@ export default function HomePage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2 text-slate-400">
                     <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                    Heart Rate & HRV
+                    All Your Runs
                   </div>
                   <div className="flex items-center gap-2 text-slate-400">
                     <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                    Sleep & Body Battery
+                    Sleep & Recovery
                   </div>
                   <div className="flex items-center gap-2 text-slate-400">
                     <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                    Activities & VO2 Max
+                    Resting HR & VO2 Max
                   </div>
                 </div>
               </div>
@@ -149,15 +149,15 @@ export default function HomePage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2 text-slate-400">
                     <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                    All Activities
+                    All Your Runs
                   </div>
                   <div className="flex items-center gap-2 text-slate-400">
                     <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                    Pace & Distance
+                    Pace & Mileage
                   </div>
                   <div className="flex items-center gap-2 text-slate-400">
                     <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                    Training Load
+                    Weekly Volume
                   </div>
                 </div>
               </div>
@@ -182,34 +182,40 @@ export default function HomePage() {
                   <span className="text-lg">📧</span>
                 </div>
                 <div>
-                  <div className="text-white font-bold">Your Weekly Plan</div>
-                  <div className="text-slate-400 text-sm">Delivered to inbox</div>
+                  <div className="text-white font-bold">Your Running Plan</div>
+                  <div className="text-slate-400 text-sm">Delivered weekly</div>
                 </div>
               </div>
 
-              <div className="space-y-3 mb-4">
-                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+              <div className="space-y-2 mb-4 text-sm">
+                <div className="bg-slate-800/50 rounded-lg p-2.5 border border-slate-700/50">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-300 text-sm font-medium">Recovery Score</span>
-                    <span className="text-green-400 font-bold">82%</span>
+                    <span className="text-slate-400">Mon</span>
+                    <span className="text-white">Easy 5mi</span>
                   </div>
                 </div>
-                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+                <div className="bg-slate-800/50 rounded-lg p-2.5 border border-slate-700/50">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-300 text-sm font-medium">This Week</span>
-                    <span className="text-white font-bold">32 mi</span>
+                    <span className="text-slate-400">Wed</span>
+                    <span className="text-orange-400">Tempo 6mi</span>
                   </div>
                 </div>
-                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+                <div className="bg-slate-800/50 rounded-lg p-2.5 border border-slate-700/50">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-300 text-sm font-medium">Long Run</span>
-                    <span className="text-purple-400 font-bold">Sunday 14mi</span>
+                    <span className="text-slate-400">Sat</span>
+                    <span className="text-purple-400">Long Run 14mi</span>
+                  </div>
+                </div>
+                <div className="bg-green-500/10 rounded-lg p-2.5 border border-green-500/20">
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-400">Weekly Total</span>
+                    <span className="text-green-400 font-bold">32 miles</span>
                   </div>
                 </div>
               </div>
 
               <div className="text-xs text-slate-500 text-center">
-                Personalized based on YOUR data
+                8 weeks to your Half Marathon 🏃‍♂️
               </div>
             </div>
           </div>
@@ -283,7 +289,7 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Connect Your Platform</h3>
                 <p className="text-slate-400 leading-relaxed">
-                  One-click connection to Garmin or Strava. We automatically pull your activity, sleep, heart rate, and recovery data.
+                  One-click connection to Garmin or Strava. We automatically pull your runs, mileage, pace, and recovery data.
                 </p>
               </div>
             </div>
@@ -294,9 +300,9 @@ export default function HomePage() {
                 <div className="w-14 h-14 bg-gradient-to-br from-pink-400 to-purple-500 rounded-2xl flex items-center justify-center mb-6">
                   <span className="text-2xl">🎯</span>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Set Your Goals</h3>
+                <h3 className="text-xl font-bold text-white mb-3">Set Your Race Goal</h3>
                 <p className="text-slate-400 leading-relaxed">
-                  Training for a 5K? Marathon? Or just building fitness? Tell us your goal and we'll build your path.
+                  5K PR? First marathon? Building your base? Tell us your race and target time - we'll map out your training.
                 </p>
               </div>
             </div>
@@ -307,9 +313,9 @@ export default function HomePage() {
                 <div className="w-14 h-14 bg-gradient-to-br from-purple-400 to-orange-500 rounded-2xl flex items-center justify-center mb-6">
                   <span className="text-2xl">📬</span>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Get Weekly Plans</h3>
+                <h3 className="text-xl font-bold text-white mb-3">Run with Your Plan</h3>
                 <p className="text-slate-400 leading-relaxed">
-                  Every week we analyze your latest data and email you a personalized training plan. <span className="text-white font-medium">Fully automatic.</span>
+                  Every week we analyze your runs and email your next week's workouts - easy days, tempos, long runs, rest days. <span className="text-white font-medium">Fully automatic.</span>
                 </p>
               </div>
             </div>
@@ -325,7 +331,7 @@ export default function HomePage() {
               Why Runners Love It
             </h2>
             <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              Training plans that actually understand your body
+              Running plans that adapt to how your body actually feels
             </p>
           </div>
 
@@ -339,9 +345,9 @@ export default function HomePage() {
                   <StravaLogo className="w-5 h-5 text-[#FC4C02]" />
                 </div>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Zero Manual Entry</h3>
+              <h3 className="text-xl font-bold text-white mb-3">No Logging Required</h3>
               <p className="text-slate-400 leading-relaxed">
-                Your Garmin or Strava data syncs <span className="text-white font-medium">automatically</span>. No logging workouts, no entering sleep data. We pull everything we need.
+                Your runs sync <span className="text-white font-medium">automatically</span>. No entering miles, paces, or rest days. We pull everything from your watch.
               </p>
             </div>
 
@@ -349,19 +355,19 @@ export default function HomePage() {
               <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-5">
                 <span className="text-2xl">💚</span>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Recovery-Aware Training</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Recovery-Aware Mileage</h3>
               <p className="text-slate-400 leading-relaxed">
-                We analyze your resting HR, sleep, body battery, and stress. When you need rest, your plan adjusts automatically.
+                Bad sleep? Elevated heart rate? We'll dial back your miles. Feeling fresh? Let's push that long run. Your plan adapts weekly.
               </p>
             </div>
 
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-3xl p-8 hover:border-purple-500/50 transition-colors">
               <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-5">
-                <span className="text-2xl">🎯</span>
+                <span className="text-2xl">🏁</span>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Goal-Specific Plans</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Race-Ready Plans</h3>
               <p className="text-slate-400 leading-relaxed">
-                Racing a half marathon? Building base miles? Your workouts are designed specifically for your goal and timeline.
+                5K, 10K, half marathon, or marathon - get the right mix of easy runs, tempo work, and long runs to hit your goal time.
               </p>
             </div>
 
@@ -369,9 +375,9 @@ export default function HomePage() {
               <div className="w-12 h-12 bg-orange-500/10 rounded-xl flex items-center justify-center mb-5">
                 <span className="text-2xl">📬</span>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Delivered to Your Inbox</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Just Check Your Email</h3>
               <p className="text-slate-400 leading-relaxed">
-                Your plan arrives every week with clear daily workouts and coaching notes. No app to check. Just open your email and run.
+                Your weekly plan arrives with every run mapped out - distance, pace, and purpose. No app. Just lace up and go.
               </p>
             </div>
           </div>
@@ -393,10 +399,10 @@ export default function HomePage() {
                 </div>
               </div>
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                Connect & Start Training
+                Ready to Run Smarter?
               </h2>
               <p className="text-xl text-slate-400 mb-8 max-w-xl mx-auto">
-                Link your Garmin or Strava account and get your first personalized plan this week. Free to start.
+                Connect your Garmin or Strava and get your first personalized running plan this week. Free to start.
               </p>
               <Link href="/signup" className="inline-flex items-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-full font-semibold text-lg hover:bg-slate-100 transition-all hover:scale-105">
                 Get Started Free
@@ -415,12 +421,12 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center">
-              <span className="text-sm">🏃</span>
+              <span className="text-sm">🏃‍♂️</span>
             </div>
-            <span className="font-semibold text-white">Fitness Weekly</span>
+            <span className="font-semibold text-white">RunPlan</span>
           </div>
           <p className="text-slate-500 text-sm">
-            © {new Date().getFullYear()} Fitness Weekly Email. Train smarter, not harder.
+            © {new Date().getFullYear()} RunPlan. Run smarter, not harder.
           </p>
         </div>
       </footer>
