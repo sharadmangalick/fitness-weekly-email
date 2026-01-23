@@ -6,6 +6,9 @@ import { createBrowserClient } from '@/lib/supabase-browser'
 import PlatformConnector from '@/components/PlatformConnector'
 import GarminConnectModal from '@/components/GarminConnectModal'
 import GoalWizard from '@/components/GoalWizard'
+import TrainingPlanView from '@/components/TrainingPlanView'
+import type { TrainingPlan } from '@/lib/training/planner'
+import type { AnalysisResults } from '@/lib/training/analyzer'
 
 interface Connection {
   platform: 'garmin' | 'strava'
@@ -21,6 +24,12 @@ interface TrainingConfig {
   email_enabled: boolean
 }
 
+interface GeneratedPlanData {
+  plan: TrainingPlan
+  analysis: AnalysisResults
+  generatedAt: string
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [connections, setConnections] = useState<Connection[]>([])
@@ -28,6 +37,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [showGarminModal, setShowGarminModal] = useState(false)
   const [showGoalWizard, setShowGoalWizard] = useState(false)
+  const [currentPlan, setCurrentPlan] = useState<GeneratedPlanData | null>(null)
+  const [planLoading, setPlanLoading] = useState(false)
+  const [planError, setPlanError] = useState<string | null>(null)
+  const [emailPreviewHtml, setEmailPreviewHtml] = useState<string | null>(null)
+  const [emailPreviewLoading, setEmailPreviewLoading] = useState(false)
   const router = useRouter()
   const supabase = createBrowserClient()
 
@@ -66,10 +80,76 @@ export default function DashboardPage() {
       if (configData) {
         setConfig(configData)
       }
+
+      // Load cached plan if user has connections and config
+      if (connectionsData && connectionsData.length > 0 && configData) {
+        loadCachedPlan()
+      }
     } catch (err) {
       console.error('Error loading user data:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadCachedPlan = async () => {
+    try {
+      const response = await fetch('/api/generate-plan')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.plan) {
+          setCurrentPlan({
+            plan: data.plan,
+            analysis: data.analysis,
+            generatedAt: data.generatedAt,
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Error loading cached plan:', err)
+    }
+  }
+
+  const generatePlan = async (force: boolean = false) => {
+    setPlanLoading(true)
+    setPlanError(null)
+
+    try {
+      const url = force ? '/api/generate-plan?force=true' : '/api/generate-plan'
+      const response = await fetch(url, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to generate plan')
+      }
+
+      const data = await response.json()
+      setCurrentPlan({
+        plan: data.plan,
+        analysis: data.analysis,
+        generatedAt: data.generatedAt,
+      })
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : 'Failed to generate plan')
+    } finally {
+      setPlanLoading(false)
+    }
+  }
+
+  const loadEmailPreview = async () => {
+    setEmailPreviewLoading(true)
+    try {
+      const response = await fetch('/api/preview-email')
+      if (response.ok) {
+        const html = await response.text()
+        setEmailPreviewHtml(html)
+      }
+    } catch (err) {
+      console.error('Error loading email preview:', err)
+    } finally {
+      setEmailPreviewLoading(false)
     }
   }
 
@@ -175,6 +255,58 @@ export default function DashboardPage() {
           </div>
         </section>
 
+        {/* Sample Email Preview - Show for users without connections */}
+        {connections.length === 0 && (
+          <section>
+            <div className="card p-6 mb-4">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                  <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">See What You'll Get</h3>
+                  <p className="text-gray-600 mb-4">
+                    Curious what your weekly training email will look like? Preview a sample email with realistic health metrics and a personalized training plan.
+                  </p>
+                  {!emailPreviewHtml && (
+                    <button
+                      onClick={loadEmailPreview}
+                      disabled={emailPreviewLoading}
+                      className="btn-secondary"
+                    >
+                      {emailPreviewLoading ? 'Loading...' : 'Preview Sample Email'}
+                    </button>
+                  )}
+                  {emailPreviewHtml && (
+                    <button
+                      onClick={() => setEmailPreviewHtml(null)}
+                      className="btn-secondary"
+                    >
+                      Hide Preview
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {emailPreviewHtml && (
+              <div className="card overflow-hidden">
+                <div className="bg-gray-100 px-4 py-2 border-b text-sm text-gray-600">
+                  Sample Email Preview
+                </div>
+                <iframe
+                  srcDoc={emailPreviewHtml}
+                  title="Email Preview"
+                  className="w-full border-0"
+                  style={{ height: '800px' }}
+                />
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Training Goals */}
         <section>
           <div className="flex items-center justify-between mb-4">
@@ -241,11 +373,109 @@ export default function DashboardPage() {
                 <button onClick={handleTriggerEmail} className="btn-primary">
                   Send Test Email Now
                 </button>
-                <button className="btn-secondary">
-                  Preview This Week's Plan
-                </button>
+                {!emailPreviewHtml ? (
+                  <button
+                    onClick={loadEmailPreview}
+                    disabled={emailPreviewLoading}
+                    className="btn-secondary"
+                  >
+                    {emailPreviewLoading ? 'Loading...' : 'Preview This Week\'s Plan'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setEmailPreviewHtml(null)}
+                    className="btn-secondary"
+                  >
+                    Hide Email Preview
+                  </button>
+                )}
               </div>
             </div>
+          </section>
+        )}
+
+        {/* Inline Email Preview */}
+        {config && connections.length > 0 && emailPreviewHtml && (
+          <section>
+            <div className="card overflow-hidden">
+              <div className="bg-gray-100 px-4 py-3 border-b flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Email Preview</span>
+                <button
+                  onClick={() => setEmailPreviewHtml(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <iframe
+                srcDoc={emailPreviewHtml}
+                title="Email Preview"
+                className="w-full border-0"
+                style={{ height: '800px' }}
+              />
+            </div>
+          </section>
+        )}
+
+        {/* Live Training Plan View */}
+        {config && connections.length > 0 && (
+          <section>
+            {planLoading && !currentPlan && (
+              <div className="card p-8 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Generating Your Plan</h3>
+                <p className="text-gray-500">Analyzing your fitness data and creating a personalized training plan...</p>
+              </div>
+            )}
+
+            {planError && (
+              <div className="card p-6 bg-red-50 border-red-200">
+                <div className="flex items-center gap-3">
+                  <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p className="font-semibold text-red-700">Failed to generate plan</p>
+                    <p className="text-sm text-red-600">{planError}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => generatePlan(true)}
+                  className="btn-secondary mt-4"
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+
+            {currentPlan && (
+              <TrainingPlanView
+                plan={currentPlan.plan}
+                analysis={currentPlan.analysis}
+                generatedAt={currentPlan.generatedAt}
+                onRefresh={() => generatePlan(true)}
+                refreshing={planLoading}
+              />
+            )}
+
+            {!currentPlan && !planLoading && !planError && (
+              <div className="card p-8 text-center">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Generate Your Training Plan</h3>
+                <p className="text-gray-500 mb-4">
+                  Get a personalized training plan based on your fitness data and goals.
+                </p>
+                <button onClick={() => generatePlan()} className="btn-primary">
+                  Generate Plan Now
+                </button>
+              </div>
+            )}
           </section>
         )}
       </main>
@@ -265,6 +495,7 @@ export default function DashboardPage() {
             setShowGoalWizard(false)
             loadUserData()
           }}
+          onPlanGenerate={connections.length > 0 ? () => generatePlan(true) : undefined}
         />
       )}
     </div>

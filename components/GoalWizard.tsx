@@ -7,6 +7,7 @@ interface GoalWizardProps {
   initialConfig?: any
   onClose: () => void
   onSave: () => void
+  onPlanGenerate?: () => void  // Optional callback to trigger plan generation after saving
 }
 
 const RACE_DISTANCES: Record<string, number> = {
@@ -17,9 +18,10 @@ const RACE_DISTANCES: Record<string, number> = {
   'ultra': 50.0,
 }
 
-export default function GoalWizard({ initialConfig, onClose, onSave }: GoalWizardProps) {
+export default function GoalWizard({ initialConfig, onClose, onSave, onPlanGenerate }: GoalWizardProps) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [generatingPlan, setGeneratingPlan] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Form state
@@ -83,6 +85,17 @@ export default function GoalWizard({ initialConfig, onClose, onSave }: GoalWizar
         .upsert(config, { onConflict: 'user_id' })
 
       if (error) throw error
+
+      // Trigger plan generation if callback is provided
+      if (onPlanGenerate) {
+        setGeneratingPlan(true)
+        try {
+          await onPlanGenerate()
+        } catch {
+          // Plan generation errors are handled by the parent
+        }
+        setGeneratingPlan(false)
+      }
 
       onSave()
     } catch (err) {
@@ -387,10 +400,10 @@ export default function GoalWizard({ initialConfig, onClose, onSave }: GoalWizar
             ) : (
               <button
                 onClick={handleSave}
-                disabled={loading}
+                disabled={loading || generatingPlan}
                 className="btn-primary disabled:opacity-50"
               >
-                {loading ? 'Saving...' : 'Save Goals'}
+                {loading ? 'Saving...' : generatingPlan ? 'Creating Your Plan...' : 'Save Goals'}
               </button>
             )}
           </div>

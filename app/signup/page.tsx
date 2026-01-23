@@ -47,6 +47,16 @@ export default function SignupPage() {
       if (error) throw error
 
       setSuccess(true)
+
+      // Send welcome email (fire and forget - don't block the success screen)
+      fetch('/api/send-welcome-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name }),
+      }).catch(err => {
+        // Log error but don't show to user - the confirmation email is more important
+        console.error('Failed to send welcome email:', err)
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign up')
     } finally {
