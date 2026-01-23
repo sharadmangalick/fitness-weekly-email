@@ -11,6 +11,9 @@ import {
 } from '@/lib/sample-data'
 import type { Database } from '@/lib/database.types'
 
+// Force dynamic rendering since we use cookies for auth
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/preview-email
  *
