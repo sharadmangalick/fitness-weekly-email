@@ -47,11 +47,11 @@ export async function POST(request: NextRequest) {
 
     // Check for cached plan (unless force refresh)
     if (!forceRefresh) {
-      const { data: cachedPlan } = await adminClient
+      const { data: cachedPlan } = await (adminClient as any)
         .from('generated_plans')
         .select('plan_json, analysis_json, created_at')
         .eq('user_id', user.id)
-        .single()
+        .single() as { data: { plan_json: any; analysis_json: any; created_at: string } | null }
 
       if (cachedPlan) {
         const createdAt = new Date(cachedPlan.created_at)
@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
 
         if (cacheAge < CACHE_VALIDITY_DAYS) {
           const response: GeneratedPlanResponse = {
-            plan: cachedPlan.plan_json as unknown as TrainingPlan,
-            analysis: cachedPlan.analysis_json as unknown as AnalysisResults,
+            plan: cachedPlan.plan_json as TrainingPlan,
+            analysis: cachedPlan.analysis_json as AnalysisResults,
             cached: true,
             generatedAt: cachedPlan.created_at,
           }
@@ -112,9 +112,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the preferred platform connection
-    const preferredPlatform = profile.preferred_platform || 'garmin'
-    const connection = connections.find(c => c.platform === preferredPlatform)
-      || connections[0]
+    const userProfile = profile as { preferred_platform?: string }
+    const platformConnections = connections as Array<{ platform: string; tokens_encrypted: string; iv: string }>
+    const preferredPlatform = userProfile.preferred_platform || 'garmin'
+    const connection = platformConnections.find(c => c.platform === preferredPlatform)
+      || platformConnections[0]
 
     // Fetch data from the connected platform
     let platformData: AllPlatformData
@@ -136,12 +138,12 @@ export async function POST(request: NextRequest) {
     const plan = generateTrainingPlan(config as TrainingConfig, analysis)
 
     // Cache the generated plan (upsert)
-    await adminClient
+    await (adminClient as any)
       .from('generated_plans')
       .upsert({
         user_id: user.id,
-        plan_json: plan as unknown as Record<string, unknown>,
-        analysis_json: analysis as unknown as Record<string, unknown>,
+        plan_json: plan,
+        analysis_json: analysis,
         created_at: new Date().toISOString(),
       }, {
         onConflict: 'user_id'
@@ -182,19 +184,19 @@ export async function GET() {
     const adminClient = createAdminClient()
 
     // Get cached plan
-    const { data: cachedPlan, error: cacheError } = await adminClient
+    const { data: cachedPlan, error: cacheError } = await (adminClient as any)
       .from('generated_plans')
       .select('plan_json, analysis_json, created_at')
       .eq('user_id', user.id)
-      .single()
+      .single() as { data: { plan_json: any; analysis_json: any; created_at: string } | null; error: any }
 
     if (cacheError || !cachedPlan) {
       return NextResponse.json({ plan: null, cached: false })
     }
 
     const response: GeneratedPlanResponse = {
-      plan: cachedPlan.plan_json as unknown as TrainingPlan,
-      analysis: cachedPlan.analysis_json as unknown as AnalysisResults,
+      plan: cachedPlan.plan_json as TrainingPlan,
+      analysis: cachedPlan.analysis_json as AnalysisResults,
       cached: true,
       generatedAt: cachedPlan.created_at,
     }
