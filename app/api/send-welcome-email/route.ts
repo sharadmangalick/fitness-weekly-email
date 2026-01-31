@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { generateWelcomeEmailHtml, generateWelcomeEmailSubject } from '@/lib/emails/welcome-email'
 
+const ADMIN_EMAIL = 'smangalick@gmail.com'
+
 // Lazy initialize Resend to avoid build-time errors
 let resend: Resend | null = null
 function getResend(): Resend {
@@ -54,6 +56,16 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    // Send admin notification (fire-and-forget)
+    getResend().emails.send({
+      from: 'Fitness Weekly <onboarding@resend.dev>',
+      to: ADMIN_EMAIL,
+      subject: `New signup: ${body.name || 'Unknown'}`,
+      text: `A new user has signed up!\n\nName: ${body.name || 'Not provided'}\nEmail: ${body.email}`,
+    }).catch((err) => {
+      console.error('Failed to send admin notification:', err)
+    })
 
     return NextResponse.json({
       success: true,
