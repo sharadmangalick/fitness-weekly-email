@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://your-app.vercel.app'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://runplan.fun'
     const dashboardUrl = `${appUrl}/dashboard`
 
     const emailHtml = generateWelcomeEmailHtml(body.name, dashboardUrl)

@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
         const plan = generateTrainingPlan(config, analysis)
 
         // Generate email
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://your-app.vercel.app'
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://runplan.fun'
         const goalsUrl = `${appUrl}/dashboard`
         const emailHtml = generateEmailHtml(profile, config, analysis, plan, goalsUrl)
         const emailSubject = generateEmailSubject(config)
