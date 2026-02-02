@@ -8,6 +8,7 @@
 import type { TrainingPlan } from './planner'
 import type { AnalysisResults } from './analyzer'
 import type { TrainingConfig, UserProfile } from '../database.types'
+import type { AllPlatformData, Activity } from '../platforms/interface'
 
 interface HealthMetric {
   metric: string
@@ -167,6 +168,283 @@ function calculateWeeksUntilRace(goalDate: string | null): number | null {
   return Math.max(0, Math.floor(diffDays / 7))
 }
 
+interface PriorWeekRecap {
+  totalMiles: number
+  totalWorkouts: number
+  runCount: number
+  bikeCount: number
+  walkCount: number
+  otherCount: number
+  longestRun: { distance: number; day: string } | null
+  totalActiveMinutes: number
+  avgPace: string | null
+}
+
+/**
+ * Build prior week recap from platform data
+ */
+function buildPriorWeekRecap(platformData: AllPlatformData | null): PriorWeekRecap | null {
+  if (!platformData || !platformData.activities || platformData.activities.length === 0) {
+    return null
+  }
+
+  const activities = platformData.activities
+
+  // Get last 7 days of activities
+  const oneWeekAgo = new Date()
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+
+  const lastWeekActivities = activities.filter(a => new Date(a.date) >= oneWeekAgo)
+
+  if (lastWeekActivities.length === 0) {
+    return null
+  }
+
+  const runs = lastWeekActivities.filter(a => a.type === 'run')
+  const bikes = lastWeekActivities.filter(a => a.type === 'bike')
+  const walks = lastWeekActivities.filter(a => a.type === 'walk')
+  const others = lastWeekActivities.filter(a => !['run', 'bike', 'walk'].includes(a.type))
+
+  // Calculate total miles (all activities)
+  const totalMiles = lastWeekActivities.reduce((sum, a) => sum + (a.distance_miles || 0), 0)
+
+  // Calculate total active minutes
+  const totalActiveMinutes = lastWeekActivities.reduce((sum, a) => sum + (a.duration_minutes || 0), 0)
+
+  // Find longest run
+  let longestRun: { distance: number; day: string } | null = null
+  if (runs.length > 0) {
+    const longest = runs.reduce((max, r) => r.distance_miles > max.distance_miles ? r : max)
+    const dayName = new Date(longest.date).toLocaleDateString('en-US', { weekday: 'long' })
+    longestRun = { distance: longest.distance_miles, day: dayName }
+  }
+
+  // Calculate average pace for runs
+  let avgPace: string | null = null
+  if (runs.length > 0) {
+    const totalRunMiles = runs.reduce((sum, r) => sum + (r.distance_miles || 0), 0)
+    const totalRunMinutes = runs.reduce((sum, r) => sum + (r.duration_minutes || 0), 0)
+    if (totalRunMiles > 0) {
+      const pacePerMile = totalRunMinutes / totalRunMiles
+      const mins = Math.floor(pacePerMile)
+      const secs = Math.round((pacePerMile - mins) * 60)
+      avgPace = `${mins}:${secs.toString().padStart(2, '0')}`
+    }
+  }
+
+  return {
+    totalMiles: Math.round(totalMiles * 10) / 10,
+    totalWorkouts: lastWeekActivities.length,
+    runCount: runs.length,
+    bikeCount: bikes.length,
+    walkCount: walks.length,
+    otherCount: others.length,
+    longestRun,
+    totalActiveMinutes: Math.round(totalActiveMinutes),
+    avgPace,
+  }
+}
+
+interface PlanExplanation {
+  baseMileage: number
+  intensity: 'conservative' | 'normal' | 'aggressive'
+  intensityLabel: string
+  recoveryStatus: 'good' | 'some_fatigue' | 'needs_recovery'
+  recoveryMessage: string
+  phase: string
+  weeksToRace: number | null
+}
+
+/**
+ * Build plan explanation based on config and analysis
+ */
+function buildPlanExplanation(
+  config: TrainingConfig,
+  analysis: AnalysisResults,
+  plan: TrainingPlan
+): PlanExplanation {
+  const intensity = config.intensity_preference || 'normal'
+  const intensityLabels: Record<string, string> = {
+    conservative: 'conservative (85% intensity)',
+    normal: 'normal',
+    aggressive: 'aggressive (115% intensity)',
+  }
+
+  // Determine recovery status from analysis
+  let concernCount = 0
+  const metrics = [analysis.resting_hr, analysis.body_battery, analysis.sleep, analysis.stress]
+  for (const metric of metrics) {
+    if (metric.available && metric.status === 'concern') concernCount++
+  }
+
+  let recoveryStatus: 'good' | 'some_fatigue' | 'needs_recovery'
+  let recoveryMessage: string
+  if (concernCount >= 2) {
+    recoveryStatus = 'needs_recovery'
+    recoveryMessage = 'multiple fatigue indicators - volume reduced'
+  } else if (concernCount === 1) {
+    recoveryStatus = 'some_fatigue'
+    recoveryMessage = 'some fatigue indicators - monitoring closely'
+  } else {
+    recoveryStatus = 'good'
+    recoveryMessage = 'good recovery this week'
+  }
+
+  return {
+    baseMileage: config.current_weekly_mileage,
+    intensity,
+    intensityLabel: intensityLabels[intensity] || 'normal',
+    recoveryStatus,
+    recoveryMessage,
+    phase: plan.week_summary.training_phase,
+    weeksToRace: calculateWeeksUntilRace(config.goal_date),
+  }
+}
+
+/**
+ * Generate HTML for prior week recap section
+ */
+function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null): string {
+  if (!recap) {
+    return `
+      <tr>
+        <td style="padding: 24px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8f9fa; border-radius: 8px; overflow: hidden;">
+            <tr>
+              <td style="padding: 16px; text-align: center;">
+                <div style="font-size: 16px; color: #666;">
+                  Connect your fitness platform to see your weekly activity recap
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `
+  }
+
+  // Build workout type summary
+  const workoutParts: string[] = []
+  if (recap.runCount > 0) workoutParts.push(`${recap.runCount} run${recap.runCount !== 1 ? 's' : ''}`)
+  if (recap.bikeCount > 0) workoutParts.push(`${recap.bikeCount} bike${recap.bikeCount !== 1 ? 's' : ''}`)
+  if (recap.walkCount > 0) workoutParts.push(`${recap.walkCount} walk${recap.walkCount !== 1 ? 's' : ''}`)
+  if (recap.otherCount > 0) workoutParts.push(`${recap.otherCount} other`)
+  const workoutSummary = workoutParts.join(' &#183; ')
+
+  // Format active time
+  const hours = Math.floor(recap.totalActiveMinutes / 60)
+  const minutes = recap.totalActiveMinutes % 60
+  const activeTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+
+  return `
+    <tr>
+      <td style="padding: 24px 24px 12px 24px;">
+        <h2 style="color: #333; font-size: 18px; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid #eee;">
+          Last Week's Training
+        </h2>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0f7ff; border-radius: 8px; overflow: hidden;">
+          <tr>
+            <td style="padding: 16px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding: 8px 0;">
+                    <span style="font-size: 16px;">&#127939;</span>
+                    <span style="color: #333; margin-left: 8px;">
+                      <strong>${recap.totalWorkouts} workouts</strong> &#183; ${recap.totalMiles} miles total
+                    </span>
+                  </td>
+                </tr>
+                ${recap.longestRun ? `
+                <tr>
+                  <td style="padding: 8px 0;">
+                    <span style="font-size: 16px;">&#128207;</span>
+                    <span style="color: #333; margin-left: 8px;">
+                      Longest run: <strong>${recap.longestRun.distance} miles</strong> (${recap.longestRun.day})
+                    </span>
+                  </td>
+                </tr>
+                ` : ''}
+                <tr>
+                  <td style="padding: 8px 0;">
+                    <span style="font-size: 16px;">&#9201;</span>
+                    <span style="color: #333; margin-left: 8px;">
+                      <strong>${activeTime}</strong> active time
+                    </span>
+                  </td>
+                </tr>
+                ${recap.avgPace ? `
+                <tr>
+                  <td style="padding: 8px 0;">
+                    <span style="font-size: 16px;">&#128168;</span>
+                    <span style="color: #333; margin-left: 8px;">
+                      Avg pace: <strong>${recap.avgPace}/mile</strong>
+                    </span>
+                  </td>
+                </tr>
+                ` : ''}
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `
+}
+
+/**
+ * Generate HTML for plan explanation section
+ */
+function generatePlanExplanationHtml(explanation: PlanExplanation, totalMiles: number, raceName: string): string {
+  const phaseLabels: Record<string, string> = {
+    base: 'Base building',
+    build: 'Build phase',
+    peak: 'Peak phase',
+    taper: 'Taper phase',
+    race_week: 'Race week',
+    maintenance: 'Maintenance',
+  }
+
+  const bullets: string[] = []
+
+  // Phase info
+  const phaseLabel = phaseLabels[explanation.phase] || explanation.phase
+  if (explanation.weeksToRace !== null && explanation.weeksToRace > 0) {
+    bullets.push(`${phaseLabel} - ${explanation.weeksToRace} week${explanation.weeksToRace !== 1 ? 's' : ''} to ${raceName}`)
+  } else if (explanation.phase === 'race_week') {
+    bullets.push(`${raceName} this week!`)
+  } else {
+    bullets.push(phaseLabel)
+  }
+
+  // Intensity info (only show if not normal)
+  if (explanation.intensity !== 'normal') {
+    bullets.push(`${explanation.intensityLabel.charAt(0).toUpperCase() + explanation.intensityLabel.slice(1)} intensity setting`)
+  }
+
+  // Recovery info
+  bullets.push(`Recovery: ${explanation.recoveryMessage}`)
+
+  return `
+    <tr>
+      <td style="padding: 12px 24px 24px 24px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8f9fa; border-radius: 8px; overflow: hidden; border-left: 4px solid #667eea;">
+          <tr>
+            <td style="padding: 16px;">
+              <div style="font-size: 14px; color: #333; margin-bottom: 8px;">
+                <strong>This Week: ${totalMiles} miles</strong>
+                <span style="color: #666;"> based on your ${explanation.baseMileage} mi/week base</span>
+              </div>
+              <ul style="margin: 0; padding-left: 20px; color: #555; font-size: 13px;">
+                ${bullets.map(b => `<li style="margin-bottom: 4px;">${b}</li>`).join('')}
+              </ul>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `
+}
+
 /**
  * Generate HTML email content
  */
@@ -175,6 +453,7 @@ export function generateEmailHtml(
   config: TrainingConfig,
   analysis: AnalysisResults,
   plan: TrainingPlan,
+  platformData: AllPlatformData | null,
   goalsUpdateUrl?: string
 ): string {
   const week = getWeekDates()
@@ -182,6 +461,10 @@ export function generateEmailHtml(
   const raceName = getRaceName(config.goal_type, config.goal_target)
   const healthSnapshot = buildHealthSnapshot(analysis)
   const recoveryStatus = determineRecoveryStatus(analysis)
+
+  // Build prior week recap and plan explanation
+  const priorWeekRecap = buildPriorWeekRecap(platformData)
+  const planExplanation = buildPlanExplanation(config, analysis, plan)
 
   const weekHeader = weeksToRace !== null
     ? `Week of ${week.start} | ${weeksToRace} weeks to ${raceName}`
@@ -316,6 +599,9 @@ export function generateEmailHtml(
             </td>
           </tr>
 
+          <!-- Prior Week Recap -->
+          ${generatePriorWeekRecapHtml(priorWeekRecap)}
+
           <!-- Health Snapshot -->
           <tr>
             <td style="padding: 24px;">
@@ -349,6 +635,9 @@ export function generateEmailHtml(
               </table>
             </td>
           </tr>
+
+          <!-- Plan Explanation -->
+          ${generatePlanExplanationHtml(planExplanation, plan.week_summary.total_miles, raceName)}
 
           <!-- Daily Plan -->
           <tr>

@@ -22,6 +22,7 @@ interface TrainingConfig {
   goal_time_minutes: number | null
   current_weekly_mileage: number
   email_enabled: boolean
+  intensity_preference?: 'conservative' | 'normal' | 'aggressive'
 }
 
 interface GeneratedPlanData {
@@ -201,6 +202,31 @@ export default function DashboardPage() {
       }
     } catch (err) {
       alert('Failed to send email. Please try again.')
+    }
+  }
+
+  const handleIntensityChange = async (intensity: 'conservative' | 'normal' | 'aggressive') => {
+    if (!user) return
+
+    try {
+      // Save to database
+      const { error } = await (supabase as any)
+        .from('training_configs')
+        .update({ intensity_preference: intensity })
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('Error saving intensity preference:', error)
+        return
+      }
+
+      // Update local state
+      setConfig(prev => prev ? { ...prev, intensity_preference: intensity } : prev)
+
+      // Regenerate plan with new intensity
+      generatePlan(true)
+    } catch (err) {
+      console.error('Error updating intensity preference:', err)
     }
   }
 
@@ -457,6 +483,8 @@ export default function DashboardPage() {
                 generatedAt={currentPlan.generatedAt}
                 onRefresh={() => generatePlan(true)}
                 refreshing={planLoading}
+                intensityPreference={config?.intensity_preference || 'normal'}
+                onIntensityChange={handleIntensityChange}
               />
             )}
 

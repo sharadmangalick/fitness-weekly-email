@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
         // Generate email
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://runplan.fun'
         const goalsUrl = `${appUrl}/dashboard`
-        const emailHtml = generateEmailHtml(profile, config, analysis, plan, goalsUrl)
+        const emailHtml = generateEmailHtml(profile, config, analysis, plan, platformData, goalsUrl)
         const emailSubject = generateEmailSubject(config)
 
         // Send email via Resend

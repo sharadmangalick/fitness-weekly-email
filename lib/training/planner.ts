@@ -26,6 +26,13 @@ const PHASE_MULTIPLIERS: Record<string, number> = {
   race_week: 0.3,
 }
 
+// Intensity multipliers for user preference
+const INTENSITY_MULTIPLIERS: Record<string, number> = {
+  conservative: 0.85,
+  normal: 1.0,
+  aggressive: 1.15,
+}
+
 // Long run percentage by phase
 const LONG_RUN_PCT: Record<string, number> = {
   base: 0.28,
@@ -445,9 +452,10 @@ export function generateTrainingPlan(
   const baseMileage = config.current_weekly_mileage
   const recoveryAdjustment = calculateRecoveryAdjustment(analysis)
   const phaseMultiplier = PHASE_MULTIPLIERS[phase] || 1.0
+  const intensityMultiplier = INTENSITY_MULTIPLIERS[config.intensity_preference || 'normal'] || 1.0
   const longRunPct = LONG_RUN_PCT[phase] || 0.28
 
-  let weeklyMiles = Math.round(baseMileage * phaseMultiplier)
+  let weeklyMiles = Math.round(baseMileage * phaseMultiplier * intensityMultiplier)
   if (recoveryAdjustment < 1.0) {
     weeklyMiles = Math.round(weeklyMiles * recoveryAdjustment)
   }

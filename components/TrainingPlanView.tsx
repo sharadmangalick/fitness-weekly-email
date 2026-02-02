@@ -2,6 +2,7 @@
 
 import type { TrainingPlan, DayPlan } from '@/lib/training/planner'
 import type { AnalysisResults } from '@/lib/training/analyzer'
+import IntensitySelector, { type IntensityPreference } from './IntensitySelector'
 
 interface TrainingPlanViewProps {
   plan: TrainingPlan
@@ -9,6 +10,8 @@ interface TrainingPlanViewProps {
   generatedAt: string
   onRefresh: () => void
   refreshing?: boolean
+  intensityPreference?: IntensityPreference
+  onIntensityChange?: (value: IntensityPreference) => void
 }
 
 function getStatusColor(status: string): string {
@@ -103,6 +106,8 @@ export default function TrainingPlanView({
   generatedAt,
   onRefresh,
   refreshing,
+  intensityPreference = 'normal',
+  onIntensityChange,
 }: TrainingPlanViewProps) {
   const generatedDate = new Date(generatedAt)
   const daysSinceGenerated = Math.floor((Date.now() - generatedDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -161,6 +166,15 @@ export default function TrainingPlanView({
           </div>
         </div>
       </div>
+
+      {/* Plan Intensity */}
+      {onIntensityChange && (
+        <IntensitySelector
+          value={intensityPreference}
+          onChange={onIntensityChange}
+          disabled={refreshing}
+        />
+      )}
 
       {/* Health Snapshot */}
       <div className="card p-6">

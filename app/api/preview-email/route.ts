@@ -8,6 +8,7 @@ import {
   sampleTrainingConfig,
   sampleAnalysisResults,
   sampleTrainingPlan,
+  samplePlatformData,
 } from '@/lib/sample-data'
 import type { Database } from '@/lib/database.types'
 
@@ -55,11 +56,14 @@ export async function GET() {
 
       // If we have all the data, use the real plan
       if (cachedPlan && profile && config) {
+        // Note: For preview, we pass null for platformData since we don't fetch it here
+        // The actual cron job will pass real data
         const html = generateEmailHtml(
           profile as any,
           config as any,
           cachedPlan.analysis_json,
           cachedPlan.plan_json,
+          null, // platformData not fetched for preview
           undefined
         )
 
@@ -78,6 +82,7 @@ export async function GET() {
       sampleTrainingConfig,
       sampleAnalysisResults,
       sampleTrainingPlan,
+      samplePlatformData,
       undefined
     )
 

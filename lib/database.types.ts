@@ -87,6 +87,7 @@ export interface Database {
           email_day: string
           email_time: string
           email_enabled: boolean
+          intensity_preference: 'conservative' | 'normal' | 'aggressive'
           created_at: string
           updated_at: string
         }
@@ -105,6 +106,7 @@ export interface Database {
           email_day?: string
           email_time?: string
           email_enabled?: boolean
+          intensity_preference?: 'conservative' | 'normal' | 'aggressive'
           created_at?: string
           updated_at?: string
         }
@@ -123,6 +125,7 @@ export interface Database {
           email_day?: string
           email_time?: string
           email_enabled?: boolean
+          intensity_preference?: 'conservative' | 'normal' | 'aggressive'
           updated_at?: string
         }
       }

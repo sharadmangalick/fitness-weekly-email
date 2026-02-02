@@ -8,6 +8,7 @@
 import type { AnalysisResults } from './training/analyzer'
 import type { TrainingPlan, DayPlan } from './training/planner'
 import type { TrainingConfig, UserProfile } from './database.types'
+import type { AllPlatformData, Activity } from './platforms/interface'
 
 /**
  * Sample user profile
@@ -44,6 +45,7 @@ export const sampleTrainingConfig: TrainingConfig = {
   email_day: 'sunday',
   email_time: '07:00',
   email_enabled: true,
+  intensity_preference: 'normal',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }
@@ -247,4 +249,87 @@ export const sampleTrainingPlan: TrainingPlan = {
     'Rest days aren\'t lazy - they\'re when your body adapts and gets stronger. Use them wisely.',
   ],
   recovery_recommendations: [],
+}
+
+/**
+ * Sample platform data - last week's activities
+ */
+export const samplePlatformData: AllPlatformData = {
+  activities: (() => {
+    const activities: Activity[] = []
+    const today = new Date()
+
+    // Last Sunday - Long run
+    const sunday = new Date(today)
+    sunday.setDate(today.getDate() - ((today.getDay() + 7) % 7) - 7)
+    activities.push({
+      id: 'activity-1',
+      date: sunday,
+      type: 'run',
+      name: 'Long Run',
+      distance_miles: 16,
+      duration_minutes: 138,
+      avg_pace_per_mile: '8:38',
+      avg_hr: 148,
+      max_hr: 165,
+      elevation_gain_ft: 320,
+      calories: 1450,
+    })
+
+    // Tuesday - Easy run
+    const tuesday = new Date(sunday)
+    tuesday.setDate(sunday.getDate() + 2)
+    activities.push({
+      id: 'activity-2',
+      date: tuesday,
+      type: 'run',
+      name: 'Easy Run',
+      distance_miles: 5.5,
+      duration_minutes: 52,
+      avg_pace_per_mile: '9:27',
+      avg_hr: 138,
+      max_hr: 152,
+      elevation_gain_ft: 85,
+      calories: 520,
+    })
+
+    // Wednesday - Tempo run
+    const wednesday = new Date(sunday)
+    wednesday.setDate(sunday.getDate() + 3)
+    activities.push({
+      id: 'activity-3',
+      date: wednesday,
+      type: 'run',
+      name: 'Tempo Run',
+      distance_miles: 6,
+      duration_minutes: 48,
+      avg_pace_per_mile: '8:00',
+      avg_hr: 162,
+      max_hr: 175,
+      elevation_gain_ft: 120,
+      calories: 580,
+    })
+
+    // Friday - Easy run with strides
+    const friday = new Date(sunday)
+    friday.setDate(sunday.getDate() + 5)
+    activities.push({
+      id: 'activity-4',
+      date: friday,
+      type: 'run',
+      name: 'Easy Run + Strides',
+      distance_miles: 5,
+      duration_minutes: 47,
+      avg_pace_per_mile: '9:24',
+      avg_hr: 140,
+      max_hr: 168,
+      elevation_gain_ft: 75,
+      calories: 480,
+    })
+
+    return activities
+  })(),
+  sleep: [],
+  heartRate: [],
+  dailySummaries: [],
 }
