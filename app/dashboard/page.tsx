@@ -8,8 +8,12 @@ import GarminConnectModal from '@/components/GarminConnectModal'
 import GoalWizard from '@/components/GoalWizard'
 import TrainingPlanView from '@/components/TrainingPlanView'
 import FullPlanOverview from '@/components/FullPlanOverview'
+import OnboardingFlow from '@/components/Onboarding/OnboardingFlow'
+import OnboardingBanner from '@/components/Onboarding/OnboardingBanner'
 import type { TrainingPlan } from '@/lib/training/planner'
 import type { AnalysisResults } from '@/lib/training/analyzer'
+
+type OnboardingStatus = 'not_started' | 'platform_connected' | 'goals_set' | 'completed' | 'skipped'
 
 interface Connection {
   platform: 'garmin' | 'strava'
@@ -44,6 +48,8 @@ export default function DashboardPage() {
   const [planError, setPlanError] = useState<string | null>(null)
   const [emailPreviewHtml, setEmailPreviewHtml] = useState<string | null>(null)
   const [emailPreviewLoading, setEmailPreviewLoading] = useState(false)
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>('not_started')
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const router = useRouter()
   const supabase = createBrowserClient()
 
@@ -61,6 +67,16 @@ export default function DashboardPage() {
       }
 
       setUser(user)
+
+      // Load user profile including onboarding status
+      const { data: profileData } = await (supabase as any)
+        .from('user_profiles')
+        .select('onboarding_status')
+        .eq('id', user.id)
+        .single()
+
+      const status = (profileData?.onboarding_status as OnboardingStatus) || 'not_started'
+      setOnboardingStatus(status)
 
       // Load connections
       const { data: connectionsData } = await supabase
@@ -81,6 +97,11 @@ export default function DashboardPage() {
 
       if (configData) {
         setConfig(configData)
+      }
+
+      // Show onboarding if not completed or skipped
+      if (status !== 'completed' && status !== 'skipped') {
+        setShowOnboarding(true)
       }
 
       // Load cached plan if user has connections and config
@@ -242,6 +263,24 @@ export default function DashboardPage() {
   const garminConnection = connections.find(c => c.platform === 'garmin')
   const stravaConnection = connections.find(c => c.platform === 'strava')
 
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false)
+    setOnboardingStatus('completed')
+    loadUserData()
+  }
+
+  const handleOnboardingSkip = () => {
+    setShowOnboarding(false)
+    setOnboardingStatus('skipped')
+  }
+
+  const handleResumeOnboarding = () => {
+    setShowOnboarding(true)
+  }
+
+  // Check if we should show the banner (skipped onboarding but not fully set up)
+  const shouldShowBanner = onboardingStatus === 'skipped' && (connections.length === 0 || !config)
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -261,6 +300,16 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+        {/* Onboarding Banner for skipped users */}
+        {shouldShowBanner && (
+          <OnboardingBanner
+            status={onboardingStatus}
+            hasConnections={connections.length > 0}
+            hasConfig={!!config}
+            onResume={handleResumeOnboarding}
+          />
+        )}
+
         {/* Platform Connections */}
         <section>
           <h2 className="text-xl font-bold text-gray-900 mb-4">Connect Your Fitness Platform</h2>
@@ -530,6 +579,19 @@ export default function DashboardPage() {
             loadUserData()
           }}
           onPlanGenerate={connections.length > 0 ? () => generatePlan(true) : undefined}
+        />
+      )}
+
+      {/* Onboarding Flow Overlay */}
+      {showOnboarding && (
+        <OnboardingFlow
+          initialStatus={onboardingStatus}
+          connections={connections}
+          config={config}
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+          onConnectionsChange={loadUserData}
+          onConfigChange={loadUserData}
         />
       )}
     </div>

@@ -19,6 +19,8 @@ export const sampleUserProfile: UserProfile = {
   name: 'Runner',
   timezone: 'America/New_York',
   preferred_platform: 'garmin',
+  onboarding_status: 'completed',
+  onboarding_completed_at: new Date().toISOString(),
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }

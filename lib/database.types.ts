@@ -16,6 +16,8 @@ export interface Database {
           name: string
           timezone: string
           preferred_platform: 'garmin' | 'strava'
+          onboarding_status: 'not_started' | 'platform_connected' | 'goals_set' | 'completed' | 'skipped'
+          onboarding_completed_at: string | null
           created_at: string
           updated_at: string
         }
@@ -25,6 +27,8 @@ export interface Database {
           name: string
           timezone?: string
           preferred_platform?: 'garmin' | 'strava'
+          onboarding_status?: 'not_started' | 'platform_connected' | 'goals_set' | 'completed' | 'skipped'
+          onboarding_completed_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -34,6 +38,8 @@ export interface Database {
           name?: string
           timezone?: string
           preferred_platform?: 'garmin' | 'strava'
+          onboarding_status?: 'not_started' | 'platform_connected' | 'goals_set' | 'completed' | 'skipped'
+          onboarding_completed_at?: string | null
           updated_at?: string
         }
       }
