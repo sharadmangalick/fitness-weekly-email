@@ -42,6 +42,16 @@ const LONG_RUN_PCT: Record<string, number> = {
   race_week: 0.15,
 }
 
+export interface WeekProjection {
+  weekNumber: number
+  weekStartDate: string
+  weeksUntilRace: number
+  phase: string
+  projectedMileage: number
+  longRunMiles: number
+  isCurrentWeek: boolean
+}
+
 export interface DayPlan {
   day: string
   workout_type: 'rest' | 'easy' | 'tempo' | 'long_run' | 'intervals' | 'race'
@@ -107,7 +117,7 @@ function getTargetPace(goalTimeMinutes: number | null, goalType: string, customD
 /**
  * Calculate recovery adjustment based on analysis results
  */
-function calculateRecoveryAdjustment(analysis: AnalysisResults): number {
+export function calculateRecoveryAdjustment(analysis: AnalysisResults): number {
   let concerns = 0
 
   if (analysis.resting_hr.available && analysis.resting_hr.status === 'concern') concerns++
@@ -524,4 +534,99 @@ export function generateTrainingPlan(
     coaching_notes: coachingNotes,
     recovery_recommendations: recoveryRecommendations,
   }
+}
+
+/**
+ * Get the Monday of the current week
+ */
+function getWeekStartDate(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Adjust when Sunday
+  d.setDate(diff)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+/**
+ * Generate full plan projection from now until race date
+ * Uses deterministic calculation based on training config
+ */
+export function generatePlanProjection(config: TrainingConfig): WeekProjection[] {
+  if (!config.goal_date) {
+    return []
+  }
+
+  const raceDate = new Date(config.goal_date)
+  const today = new Date()
+  const currentWeekStart = getWeekStartDate(today)
+
+  // Calculate total weeks from now until race
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000
+  const totalWeeks = Math.ceil((raceDate.getTime() - currentWeekStart.getTime()) / msPerWeek)
+
+  if (totalWeeks <= 0) {
+    return []
+  }
+
+  const projections: WeekProjection[] = []
+  const baseMileage = config.current_weekly_mileage
+  const intensityMultiplier = INTENSITY_MULTIPLIERS[config.intensity_preference || 'normal'] || 1.0
+
+  for (let i = 0; i < totalWeeks; i++) {
+    const weekStart = new Date(currentWeekStart)
+    weekStart.setDate(weekStart.getDate() + (i * 7))
+
+    const weeksUntilRace = totalWeeks - i - 1
+    const phase = getTrainingPhase(weeksUntilRace)
+    const phaseMultiplier = PHASE_MULTIPLIERS[phase] || 1.0
+    const longRunPct = LONG_RUN_PCT[phase] || 0.28
+
+    const projectedMileage = Math.round(baseMileage * phaseMultiplier * intensityMultiplier)
+    let longRunMiles = Math.round(projectedMileage * longRunPct)
+
+    // Cap long run based on goal type
+    const maxLongRun: Record<string, number> = {
+      '5k': 10, '10k': 12, 'half_marathon': 16, 'marathon': 22, 'ultra': 26,
+    }
+    const longRunCap = maxLongRun[config.goal_type] || 20
+    longRunMiles = Math.min(longRunMiles, longRunCap)
+    longRunMiles = Math.max(longRunMiles, 4)
+
+    // Race week doesn't have a traditional long run
+    if (phase === 'race_week') {
+      longRunMiles = 0
+    }
+
+    projections.push({
+      weekNumber: i + 1,
+      weekStartDate: weekStart.toISOString().split('T')[0],
+      weeksUntilRace,
+      phase,
+      projectedMileage,
+      longRunMiles,
+      isCurrentWeek: i === 0,
+    })
+  }
+
+  return projections
+}
+
+/**
+ * Calculate recovery concerns from analysis results
+ */
+export function getRecoveryConcerns(analysis: AnalysisResults): string[] {
+  const concerns: string[] = []
+
+  if (analysis.resting_hr.available && analysis.resting_hr.status === 'concern') {
+    concerns.push('elevated_hr')
+  }
+  if (analysis.body_battery.available && analysis.body_battery.status === 'concern') {
+    concerns.push('low_battery')
+  }
+  if (analysis.sleep.available && analysis.sleep.status === 'concern') {
+    concerns.push('poor_sleep')
+  }
+
+  return concerns
 }

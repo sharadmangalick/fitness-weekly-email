@@ -173,3 +173,16 @@ export type UserProfile = Database['public']['Tables']['user_profiles']['Row']
 export type PlatformConnection = Database['public']['Tables']['platform_connections']['Row']
 export type TrainingConfig = Database['public']['Tables']['training_configs']['Row']
 export type EmailHistory = Database['public']['Tables']['email_history']['Row']
+
+// Plan modification type (not in auto-generated schema yet)
+export interface PlanModification {
+  id: string
+  user_id: string
+  week_start_date: string
+  original_mileage: number
+  adjusted_mileage: number
+  recovery_adjustment: number
+  concerns: string[]
+  phase: string
+  created_at: string
+}

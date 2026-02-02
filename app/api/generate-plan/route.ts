@@ -5,7 +5,7 @@ import { decryptTokens } from '@/lib/encryption'
 import { GarminAdapter } from '@/lib/platforms/garmin/adapter'
 import { StravaAdapter } from '@/lib/platforms/strava/adapter'
 import { analyzeTrainingData, AnalysisResults } from '@/lib/training/analyzer'
-import { generateTrainingPlan, TrainingPlan } from '@/lib/training/planner'
+import { generateTrainingPlan, TrainingPlan, calculateRecoveryAdjustment, getRecoveryConcerns } from '@/lib/training/planner'
 import type { GarminTokens, StravaTokens, AllPlatformData } from '@/lib/platforms/interface'
 import type { TrainingConfig } from '@/lib/database.types'
 
@@ -148,6 +148,45 @@ export async function POST(request: NextRequest) {
       }, {
         onConflict: 'user_id'
       })
+
+    // Record modification if recovery adjustment was applied
+    const recoveryAdjustment = calculateRecoveryAdjustment(analysis)
+    if (recoveryAdjustment < 1.0) {
+      const concerns = getRecoveryConcerns(analysis)
+      const trainingConfig = config as TrainingConfig
+
+      // Calculate original mileage (without recovery adjustment)
+      const PHASE_MULTIPLIERS: Record<string, number> = {
+        base: 0.85, build: 1.0, peak: 1.1, taper: 0.6, race_week: 0.3,
+      }
+      const INTENSITY_MULTIPLIERS: Record<string, number> = {
+        conservative: 0.85, normal: 1.0, aggressive: 1.15,
+      }
+      const phaseMultiplier = PHASE_MULTIPLIERS[plan.week_summary.training_phase] || 1.0
+      const intensityMultiplier = INTENSITY_MULTIPLIERS[trainingConfig.intensity_preference || 'normal'] || 1.0
+      const originalMileage = Math.round(trainingConfig.current_weekly_mileage * phaseMultiplier * intensityMultiplier)
+
+      // Get the start of the current week (Monday)
+      const today = new Date()
+      const day = today.getDay()
+      const diff = today.getDate() - day + (day === 0 ? -6 : 1)
+      const weekStart = new Date(today.setDate(diff))
+      weekStart.setHours(0, 0, 0, 0)
+
+      await (adminClient as any)
+        .from('plan_modifications')
+        .upsert({
+          user_id: user.id,
+          week_start_date: weekStart.toISOString().split('T')[0],
+          original_mileage: originalMileage,
+          adjusted_mileage: plan.week_summary.total_miles,
+          recovery_adjustment: recoveryAdjustment,
+          concerns,
+          phase: plan.week_summary.training_phase,
+        }, {
+          onConflict: 'user_id,week_start_date'
+        })
+    }
 
     const response: GeneratedPlanResponse = {
       plan,

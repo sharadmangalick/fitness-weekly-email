@@ -7,6 +7,7 @@ import PlatformConnector from '@/components/PlatformConnector'
 import GarminConnectModal from '@/components/GarminConnectModal'
 import GoalWizard from '@/components/GoalWizard'
 import TrainingPlanView from '@/components/TrainingPlanView'
+import FullPlanOverview from '@/components/FullPlanOverview'
 import type { TrainingPlan } from '@/lib/training/planner'
 import type { AnalysisResults } from '@/lib/training/analyzer'
 
@@ -505,6 +506,11 @@ export default function DashboardPage() {
               </div>
             )}
           </section>
+        )}
+
+        {/* Full Plan Overview - only show for race goals with a date */}
+        {config && config.goal_category === 'race' && config.goal_date && connections.length > 0 && (
+          <FullPlanOverview />
         )}
       </main>
 
