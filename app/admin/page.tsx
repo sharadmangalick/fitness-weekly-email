@@ -90,6 +90,30 @@ async function getAdminData() {
     .order('created_at', { ascending: false })
     .limit(20)
 
+  // Get all users for admin management
+  const { data: allUsers } = await supabase
+    .from('user_profiles')
+    .select('id, email, name, onboarding_status, created_at')
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  // Get connections and configs for user status
+  const { data: userConnections } = await supabase
+    .from('platform_connections')
+    .select('user_id, platform, status')
+
+  const { data: userConfigs } = await supabase
+    .from('training_configs')
+    .select('user_id')
+
+  // Enrich users with connection/config info
+  const usersWithStatus = (allUsers || []).map(user => ({
+    ...user,
+    hasConnection: userConnections?.some(c => c.user_id === user.id && c.status === 'active') || false,
+    connectionPlatform: userConnections?.find(c => c.user_id === user.id && c.status === 'active')?.platform || null,
+    hasConfig: userConfigs?.some(c => c.user_id === user.id) || false,
+  }))
+
   return {
     overview: {
       totalUsers: totalUsers || 0,
@@ -114,6 +138,7 @@ async function getAdminData() {
       recent: donations || [],
     },
     oauthFailures: oauthFailures || [],
+    users: usersWithStatus,
   }
 }
 
