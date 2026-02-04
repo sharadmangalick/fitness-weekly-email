@@ -109,6 +109,14 @@ export default function OnboardingFlow({
       // Track onboarding completed
       trackOnboardingCompleted()
       await updateOnboardingStatus('completed')
+
+      // Send first week training email (fire-and-forget)
+      fetch('/api/send-first-week-email', {
+        method: 'POST',
+      }).catch(err => {
+        console.error('Failed to send first week email:', err)
+      })
+
       onComplete()
     } finally {
       setCompleting(false)
