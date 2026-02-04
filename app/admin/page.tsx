@@ -95,7 +95,6 @@ async function getAdminData() {
     .from('user_profiles')
     .select('id, email, name, onboarding_status, created_at')
     .order('created_at', { ascending: false })
-    .limit(50)
 
   // Get connections and configs for user status
   const { data: userConnections } = await supabase
