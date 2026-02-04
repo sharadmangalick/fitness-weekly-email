@@ -50,17 +50,8 @@ export default function SignupPage() {
       // Track successful signup
       trackSignup()
 
-      setSuccess(true)
-
-      // Send welcome email (fire and forget - don't block the success screen)
-      fetch('/api/send-welcome-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name }),
-      }).catch(err => {
-        // Log error but don't show to user - the confirmation email is more important
-        console.error('Failed to send welcome email:', err)
-      })
+      // Redirect directly to login
+      router.push('/login?registered=true')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign up')
     } finally {
@@ -125,11 +116,15 @@ export default function SignupPage() {
             </label>
             <input
               id="email"
-              type="email"
+              type="text"
+              inputMode="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input-field"
               placeholder="you@example.com"
+              pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
+              title="Please enter a valid email address"
               required
             />
           </div>
