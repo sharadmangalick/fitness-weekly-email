@@ -47,22 +47,25 @@ export async function POST(request: NextRequest) {
 
     // Check for cached plan (unless force refresh)
     if (!forceRefresh) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: cachedPlan } = await (adminClient as any)
         .from('generated_plans')
         .select('plan_json, analysis_json, created_at')
         .eq('user_id', user.id)
-        .single() as { data: { plan_json: any; analysis_json: any; created_at: string } | null }
+        .single()
 
-      if (cachedPlan) {
-        const createdAt = new Date(cachedPlan.created_at)
+      const typedCachedPlan = cachedPlan as { plan_json: any; analysis_json: any; created_at: string } | null
+
+      if (typedCachedPlan) {
+        const createdAt = new Date(typedCachedPlan.created_at)
         const cacheAge = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
 
         if (cacheAge < CACHE_VALIDITY_DAYS) {
           const response: GeneratedPlanResponse = {
-            plan: cachedPlan.plan_json as TrainingPlan,
-            analysis: cachedPlan.analysis_json as AnalysisResults,
+            plan: typedCachedPlan.plan_json as TrainingPlan,
+            analysis: typedCachedPlan.analysis_json as AnalysisResults,
             cached: true,
-            generatedAt: cachedPlan.created_at,
+            generatedAt: typedCachedPlan.created_at,
           }
           return NextResponse.json(response)
         }
