@@ -38,7 +38,7 @@ export default function GoalWizard({ initialConfig, onClose, onSave, onPlanGener
   const [goalMinutes, setGoalMinutes] = useState(
     initialConfig?.goal_time_minutes ? initialConfig.goal_time_minutes % 60 : 45
   )
-  const [currentMileage, setCurrentMileage] = useState(initialConfig?.current_weekly_mileage || 35)
+  const [currentMileage, setCurrentMileage] = useState(initialConfig?.current_weekly_mileage ?? 20)
   const [targetMileage, setTargetMileage] = useState(initialConfig?.target_weekly_mileage || 50)
   const [experienceLevel, setExperienceLevel] = useState(initialConfig?.experience_level || 'intermediate')
   const [longRunDay, setLongRunDay] = useState(initialConfig?.preferred_long_run_day || 'sunday')
@@ -238,10 +238,10 @@ export default function GoalWizard({ initialConfig, onClose, onSave, onPlanGener
                   </label>
                   <input
                     type="number"
-                    min="5"
+                    min="0"
                     max="150"
                     value={targetMileage}
-                    onChange={(e) => setTargetMileage(parseInt(e.target.value) || 50)}
+                    onChange={(e) => setTargetMileage(e.target.value === '' ? 0 : parseInt(e.target.value))}
                     className="input-field"
                   />
                 </div>
@@ -262,10 +262,10 @@ export default function GoalWizard({ initialConfig, onClose, onSave, onPlanGener
             </label>
             <input
               type="number"
-              min="5"
+              min="0"
               max="150"
               value={currentMileage}
-              onChange={(e) => setCurrentMileage(parseInt(e.target.value) || 35)}
+              onChange={(e) => setCurrentMileage(e.target.value === '' ? 0 : parseInt(e.target.value))}
               className="input-field"
             />
           </div>
