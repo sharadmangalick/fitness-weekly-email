@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserClient } from '@/lib/supabase-browser'
+import { trackSignup } from '@/components/GoogleAnalytics'
 
 export default function SignupPage() {
   const [name, setName] = useState('')
@@ -45,6 +46,9 @@ export default function SignupPage() {
       })
 
       if (error) throw error
+
+      // Track successful signup
+      trackSignup()
 
       setSuccess(true)
 

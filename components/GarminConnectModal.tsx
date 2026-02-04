@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { trackPlatformConnection } from '@/components/GoogleAnalytics'
 
 interface GarminConnectModalProps {
   isOpen: boolean
@@ -33,6 +34,9 @@ export default function GarminConnectModal({ isOpen, onClose, onSuccess }: Garmi
       if (!response.ok) {
         throw new Error(data.error || 'Failed to connect')
       }
+
+      // Track successful Garmin connection
+      trackPlatformConnection('garmin')
 
       onSuccess()
       onClose()

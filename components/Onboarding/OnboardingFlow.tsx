@@ -6,6 +6,14 @@ import StepConnectPlatform from './StepConnectPlatform'
 import StepSetGoals from './StepSetGoals'
 import StepPlanPreview from './StepPlanPreview'
 import GarminConnectModal from '@/components/GarminConnectModal'
+import {
+  trackOnboardingStarted,
+  trackOnboardingPlatformConnected,
+  trackOnboardingGoalsSet,
+  trackOnboardingCompleted,
+  trackOnboardingSkipped,
+  trackPlatformConnection,
+} from '@/components/GoogleAnalytics'
 
 type OnboardingStatus = 'not_started' | 'platform_connected' | 'goals_set' | 'completed' | 'skipped'
 
@@ -58,6 +66,13 @@ export default function OnboardingFlow({
   const currentStep = getCurrentStep()
   const totalSteps = 3
 
+  // Track onboarding started when component mounts
+  useEffect(() => {
+    if (initialStatus === 'not_started') {
+      trackOnboardingStarted()
+    }
+  }, [initialStatus])
+
   const handleGarminConnect = () => {
     setShowGarminModal(true)
   }
@@ -73,12 +88,16 @@ export default function OnboardingFlow({
 
   const handleGarminSuccess = async () => {
     setShowGarminModal(false)
+    // Track onboarding milestone
+    trackOnboardingPlatformConnected('garmin')
     // Update onboarding status
     await updateOnboardingStatus('platform_connected')
     onConnectionsChange()
   }
 
   const handleGoalsSaved = async () => {
+    // Track onboarding milestone
+    trackOnboardingGoalsSet()
     // Update onboarding status
     await updateOnboardingStatus('goals_set')
     onConfigChange()
@@ -87,6 +106,8 @@ export default function OnboardingFlow({
   const handleComplete = async () => {
     setCompleting(true)
     try {
+      // Track onboarding completed
+      trackOnboardingCompleted()
       await updateOnboardingStatus('completed')
       onComplete()
     } finally {
@@ -95,6 +116,8 @@ export default function OnboardingFlow({
   }
 
   const handleSkip = async () => {
+    // Track onboarding skipped with current step
+    trackOnboardingSkipped(currentStep)
     await updateOnboardingStatus('skipped')
     onSkip()
   }

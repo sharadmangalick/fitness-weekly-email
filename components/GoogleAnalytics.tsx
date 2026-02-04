@@ -82,3 +82,36 @@ export function trackDonation(amount: number) {
     items: [{ item_name: 'Donation' }],
   })
 }
+
+// Set user ID for cross-session tracking
+export function setUserId(userId: string) {
+  if (typeof window !== 'undefined' && window.gtag && GA_MEASUREMENT_ID) {
+    window.gtag('config', GA_MEASUREMENT_ID, { user_id: userId })
+  }
+}
+
+// Onboarding funnel events
+export function trackOnboardingStarted() {
+  if (!GA_MEASUREMENT_ID || typeof window === 'undefined' || !window.gtag) return
+  window.gtag('event', 'onboarding_started', {})
+}
+
+export function trackOnboardingPlatformConnected(platform: 'garmin' | 'strava') {
+  if (!GA_MEASUREMENT_ID || typeof window === 'undefined' || !window.gtag) return
+  window.gtag('event', 'onboarding_platform_connected', { platform })
+}
+
+export function trackOnboardingGoalsSet() {
+  if (!GA_MEASUREMENT_ID || typeof window === 'undefined' || !window.gtag) return
+  window.gtag('event', 'onboarding_goals_set', {})
+}
+
+export function trackOnboardingCompleted() {
+  if (!GA_MEASUREMENT_ID || typeof window === 'undefined' || !window.gtag) return
+  window.gtag('event', 'onboarding_completed', {})
+}
+
+export function trackOnboardingSkipped(step: number) {
+  if (!GA_MEASUREMENT_ID || typeof window === 'undefined' || !window.gtag) return
+  window.gtag('event', 'onboarding_skipped', { step })
+}

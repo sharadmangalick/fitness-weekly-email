@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createBrowserClient } from '@/lib/supabase-browser'
+import { trackGoalConfigured } from '@/components/GoogleAnalytics'
 
 interface GoalWizardProps {
   initialConfig?: any
@@ -86,6 +87,9 @@ export default function GoalWizard({ initialConfig, onClose, onSave, onPlanGener
         .upsert(config, { onConflict: 'user_id' })
 
       if (error) throw error
+
+      // Track goal configuration
+      trackGoalConfigured()
 
       // Trigger plan generation if callback is provided
       if (onPlanGenerate) {

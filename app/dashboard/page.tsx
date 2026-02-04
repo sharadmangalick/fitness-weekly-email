@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import PlatformConnector from '@/components/PlatformConnector'
 import GarminConnectModal from '@/components/GarminConnectModal'
@@ -12,6 +12,7 @@ import OnboardingFlow from '@/components/Onboarding/OnboardingFlow'
 import OnboardingBanner from '@/components/Onboarding/OnboardingBanner'
 import type { TrainingPlan } from '@/lib/training/planner'
 import type { AnalysisResults } from '@/lib/training/analyzer'
+import { setUserId, trackPlatformConnection } from '@/components/GoogleAnalytics'
 
 type OnboardingStatus = 'not_started' | 'platform_connected' | 'goals_set' | 'completed' | 'skipped'
 
@@ -51,11 +52,20 @@ export default function DashboardPage() {
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>('not_started')
   const [showOnboarding, setShowOnboarding] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createBrowserClient()
 
   useEffect(() => {
     loadUserData()
-  }, [])
+
+    // Track Strava connection success from OAuth callback
+    const successParam = searchParams.get('success')
+    if (successParam === 'strava_connected') {
+      trackPlatformConnection('strava')
+      // Clean up URL
+      router.replace('/dashboard', { scroll: false })
+    }
+  }, [searchParams, router])
 
   const loadUserData = async () => {
     try {
@@ -67,6 +77,9 @@ export default function DashboardPage() {
       }
 
       setUser(user)
+
+      // Set GA user ID for cross-session tracking
+      setUserId(user.id)
 
       // Load user profile including onboarding status
       const { data: profileData } = await (supabase as any)
