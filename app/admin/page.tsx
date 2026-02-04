@@ -78,6 +78,18 @@ async function getAdminData() {
   const totalDonations = donationTotals?.length || 0
   const totalDonationAmount = donationTotals?.reduce((sum, d) => sum + d.amount_cents, 0) || 0
 
+  // Get recent OAuth failures (last 7 days)
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+  const { data: oauthFailures } = await supabase
+    .from('oauth_attempts')
+    .select('flow_id, user_id, platform, step, status, error_code, error_message, created_at')
+    .eq('status', 'failed')
+    .gte('created_at', sevenDaysAgo.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(20)
+
   return {
     overview: {
       totalUsers: totalUsers || 0,
@@ -101,6 +113,7 @@ async function getAdminData() {
       totalAmount: totalDonationAmount,
       recent: donations || [],
     },
+    oauthFailures: oauthFailures || [],
   }
 }
 

@@ -5,6 +5,8 @@
  * Works with FREE Strava accounts - only uses activity data.
  */
 
+import { log, maskSensitive } from '@/lib/logging'
+
 const STRAVA_API_BASE = 'https://www.strava.com/api/v3'
 const STRAVA_AUTH_URL = 'https://www.strava.com/oauth/authorize'
 const STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token'
@@ -88,13 +90,24 @@ export function getStravaAuthUrl(state?: string): string {
 /**
  * Exchange authorization code for access tokens
  */
-export async function exchangeCodeForTokens(code: string): Promise<StravaTokens> {
+export async function exchangeCodeForTokens(code: string, flowId?: string): Promise<StravaTokens> {
   const clientId = process.env.STRAVA_CLIENT_ID
   const clientSecret = process.env.STRAVA_CLIENT_SECRET
 
+  log('info', 'Token exchange: checking environment', {
+    flowId,
+    hasClientId: !!clientId,
+    hasClientSecret: !!clientSecret,
+    codeLength: code.length,
+    codeMasked: maskSensitive(code),
+  })
+
   if (!clientId || !clientSecret) {
+    log('error', 'Token exchange: missing credentials', { flowId, hasClientId: !!clientId, hasClientSecret: !!clientSecret })
     throw new Error('STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET must be set')
   }
+
+  log('info', 'Token exchange: sending request to Strava', { flowId })
 
   const response = await fetch(STRAVA_TOKEN_URL, {
     method: 'POST',
@@ -109,12 +122,32 @@ export async function exchangeCodeForTokens(code: string): Promise<StravaTokens>
     }),
   })
 
+  log('info', 'Token exchange: received response', {
+    flowId,
+    status: response.status,
+    statusText: response.statusText,
+  })
+
   if (!response.ok) {
     const error = await response.text()
-    throw new Error(`Failed to exchange code: ${error}`)
+    log('error', 'Token exchange: request failed', {
+      flowId,
+      status: response.status,
+      error: error.substring(0, 200),
+    })
+    throw new Error(`Failed to exchange code: ${response.status} ${error}`)
   }
 
   const data = await response.json()
+
+  log('info', 'Token exchange: success', {
+    flowId,
+    athleteId: data.athlete?.id,
+    hasAccessToken: !!data.access_token,
+    hasRefreshToken: !!data.refresh_token,
+    expiresAt: data.expires_at,
+    accessTokenLength: data.access_token?.length || 0,
+  })
 
   return {
     access_token: data.access_token,

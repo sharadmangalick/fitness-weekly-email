@@ -161,6 +161,44 @@ export interface Database {
           error_message?: string | null
         }
       }
+      oauth_attempts: {
+        Row: {
+          id: string
+          user_id: string | null
+          platform: string
+          flow_id: string
+          step: string
+          status: string
+          error_code: string | null
+          error_message: string | null
+          metadata: Record<string, unknown> | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          platform: string
+          flow_id: string
+          step: string
+          status: string
+          error_code?: string | null
+          error_message?: string | null
+          metadata?: Record<string, unknown> | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          platform?: string
+          flow_id?: string
+          step?: string
+          status?: string
+          error_code?: string | null
+          error_message?: string | null
+          metadata?: Record<string, unknown> | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -179,6 +217,7 @@ export type UserProfile = Database['public']['Tables']['user_profiles']['Row']
 export type PlatformConnection = Database['public']['Tables']['platform_connections']['Row']
 export type TrainingConfig = Database['public']['Tables']['training_configs']['Row']
 export type EmailHistory = Database['public']['Tables']['email_history']['Row']
+export type OAuthAttempt = Database['public']['Tables']['oauth_attempts']['Row']
 
 // Plan modification type (not in auto-generated schema yet)
 export interface PlanModification {

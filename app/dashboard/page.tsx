@@ -37,6 +37,20 @@ interface GeneratedPlanData {
   generatedAt: string
 }
 
+// Map error codes to user-friendly messages
+const ERROR_MESSAGES: Record<string, string> = {
+  strava_auth_failed: 'Failed to start Strava authorization. Please try again.',
+  strava_denied: 'You declined to connect your Strava account.',
+  no_code: 'No authorization code received from Strava.',
+  invalid_state: 'Invalid or missing state parameter. Please try again.',
+  state_expired: 'Authorization timed out. Please try connecting again.',
+  token_exchange_failed: 'Failed to complete authorization with Strava.',
+  encryption_failed: 'Failed to securely store your connection.',
+  db_error: 'Failed to save your connection. Please try again.',
+  verification_failed: 'Connection saved but could not be verified.',
+  strava_callback_failed: 'Something went wrong. Please try again.',
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [connections, setConnections] = useState<Connection[]>([])
@@ -51,6 +65,7 @@ export default function DashboardPage() {
   const [emailPreviewLoading, setEmailPreviewLoading] = useState(false)
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>('not_started')
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [connectionError, setConnectionError] = useState<{ message: string; flowId?: string } | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createBrowserClient()
@@ -62,7 +77,18 @@ export default function DashboardPage() {
     const successParam = searchParams.get('success')
     if (successParam === 'strava_connected') {
       trackPlatformConnection('strava')
+      setConnectionError(null)
       // Clean up URL
+      router.replace('/dashboard', { scroll: false })
+    }
+
+    // Handle error parameters from OAuth callback
+    const errorParam = searchParams.get('error')
+    if (errorParam) {
+      const flowId = searchParams.get('flow') || undefined
+      const message = ERROR_MESSAGES[errorParam] || 'An error occurred connecting to Strava.'
+      setConnectionError({ message, flowId })
+      // Clean up URL but keep error visible
       router.replace('/dashboard', { scroll: false })
     }
   }, [searchParams, router])
@@ -313,6 +339,33 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+        {/* Connection Error Alert */}
+        {connectionError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1">
+                <p className="font-medium text-red-800">{connectionError.message}</p>
+                {connectionError.flowId && (
+                  <p className="text-sm text-red-600 mt-1">
+                    Reference: {connectionError.flowId}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setConnectionError(null)}
+                className="text-red-500 hover:text-red-700"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Onboarding Banner for skipped users */}
         {shouldShowBanner && (
           <OnboardingBanner
