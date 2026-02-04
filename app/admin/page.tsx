@@ -1,12 +1,55 @@
 import { redirect } from 'next/navigation'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { createAdminClient } from '@/lib/supabase-server'
 import AdminDashboard from '@/components/AdminDashboard'
 
 const ADMIN_EMAIL = 'smangalick@gmail.com'
 
+interface ConnectionRecord {
+  platform: string
+  status: string
+  user_id?: string
+}
+
+interface EmailRecord {
+  status: string
+  sent_at: string
+}
+
+interface UserRecord {
+  id: string
+  email: string
+  name: string | null
+  onboarding_status: string
+  created_at: string
+}
+
+interface DonationRecord {
+  amount_cents: number
+  email: string | null
+  created_at: string
+}
+
+interface ConfigRecord {
+  user_id: string
+}
+
+interface OAuthRecord {
+  flow_id: string
+  user_id: string | null
+  platform: string
+  step: string
+  status: string
+  error_code: string | null
+  error_message: string | null
+  created_at: string
+}
+
 async function getAdminData() {
-  const supabase = createServerComponentClient({ cookies })
+  // Use admin client to bypass RLS and see all users
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createAdminClient() as any
 
   // Get total users
   const { count: totalUsers } = await supabase
@@ -24,9 +67,10 @@ async function getAdminData() {
     .select('*', { count: 'exact', head: true })
 
   // Get platform connections breakdown
-  const { data: connections } = await supabase
+  const { data: connectionsData } = await supabase
     .from('platform_connections')
     .select('platform, status')
+  const connections = connectionsData as ConnectionRecord[] | null
 
   const garminActive = connections?.filter(c => c.platform === 'garmin' && c.status === 'active').length || 0
   const garminExpired = connections?.filter(c => c.platform === 'garmin' && c.status === 'expired').length || 0
@@ -39,10 +83,11 @@ async function getAdminData() {
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  const { data: emailHistory } = await supabase
+  const { data: emailHistoryData } = await supabase
     .from('email_history')
     .select('status, sent_at')
     .gte('sent_at', thirtyDaysAgo.toISOString())
+  const emailHistory = emailHistoryData as EmailRecord[] | null
 
   const emailsSent = emailHistory?.filter(e => e.status === 'sent').length || 0
   const emailsFailed = emailHistory?.filter(e => e.status === 'failed').length || 0
@@ -51,11 +96,12 @@ async function getAdminData() {
   const fourteenDaysAgo = new Date()
   fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
 
-  const { data: recentUsers } = await supabase
+  const { data: recentUsersData } = await supabase
     .from('user_profiles')
     .select('created_at')
     .gte('created_at', fourteenDaysAgo.toISOString())
     .order('created_at', { ascending: true })
+  const recentUsers = recentUsersData as { created_at: string }[] | null
 
   // Group signups by day
   const signupsByDay: Record<string, number> = {}
@@ -65,15 +111,17 @@ async function getAdminData() {
   })
 
   // Get donation stats
-  const { data: donations } = await supabase
+  const { data: donationsData } = await supabase
     .from('donations')
     .select('amount_cents, email, created_at')
     .order('created_at', { ascending: false })
     .limit(10)
+  const donations = donationsData as DonationRecord[] | null
 
-  const { data: donationTotals } = await supabase
+  const { data: donationTotalsData } = await supabase
     .from('donations')
     .select('amount_cents')
+  const donationTotals = donationTotalsData as { amount_cents: number }[] | null
 
   const totalDonations = donationTotals?.length || 0
   const totalDonationAmount = donationTotals?.reduce((sum, d) => sum + d.amount_cents, 0) || 0
@@ -82,28 +130,32 @@ async function getAdminData() {
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
-  const { data: oauthFailures } = await supabase
+  const { data: oauthFailuresData } = await supabase
     .from('oauth_attempts')
     .select('flow_id, user_id, platform, step, status, error_code, error_message, created_at')
     .eq('status', 'failed')
     .gte('created_at', sevenDaysAgo.toISOString())
     .order('created_at', { ascending: false })
     .limit(20)
+  const oauthFailures = oauthFailuresData as OAuthRecord[] | null
 
   // Get all users for admin management
-  const { data: allUsers } = await supabase
+  const { data: allUsersData } = await supabase
     .from('user_profiles')
     .select('id, email, name, onboarding_status, created_at')
     .order('created_at', { ascending: false })
+  const allUsers = allUsersData as UserRecord[] | null
 
   // Get connections and configs for user status
-  const { data: userConnections } = await supabase
+  const { data: userConnectionsData } = await supabase
     .from('platform_connections')
     .select('user_id, platform, status')
+  const userConnections = userConnectionsData as ConnectionRecord[] | null
 
-  const { data: userConfigs } = await supabase
+  const { data: userConfigsData } = await supabase
     .from('training_configs')
     .select('user_id')
+  const userConfigs = userConfigsData as ConfigRecord[] | null
 
   // Enrich users with connection/config info
   const usersWithStatus = (allUsers || []).map(user => ({
