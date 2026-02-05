@@ -46,6 +46,17 @@ interface OAuthRecord {
   created_at: string
 }
 
+interface WebhookRecord {
+  flow_id: string
+  stripe_event_id: string | null
+  stripe_event_type: string
+  step: string
+  status: string
+  error_code: string | null
+  error_message: string | null
+  created_at: string
+}
+
 async function getAdminData() {
   // Use admin client to bypass RLS and see all users
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -139,6 +150,33 @@ async function getAdminData() {
     .limit(20)
   const oauthFailures = oauthFailuresData as OAuthRecord[] | null
 
+  // Get recent webhook failures (last 7 days)
+  const { data: webhookFailuresData } = await supabase
+    .from('webhook_attempts')
+    .select('flow_id, stripe_event_id, stripe_event_type, step, status, error_code, error_message, created_at')
+    .eq('status', 'failed')
+    .gte('created_at', sevenDaysAgo.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(20)
+  const webhookFailures = webhookFailuresData as WebhookRecord[] | null
+
+  // Get webhook stats (last 24 hours)
+  const oneDayAgo = new Date()
+  oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+
+  const { count: webhookTotal } = await supabase
+    .from('webhook_attempts')
+    .select('*', { count: 'exact', head: true })
+    .eq('step', 'completed')
+    .gte('created_at', oneDayAgo.toISOString())
+
+  const { count: webhookSuccess } = await supabase
+    .from('webhook_attempts')
+    .select('*', { count: 'exact', head: true })
+    .eq('step', 'completed')
+    .eq('status', 'success')
+    .gte('created_at', oneDayAgo.toISOString())
+
   // Get all users for admin management
   const { data: allUsersData } = await supabase
     .from('user_profiles')
@@ -182,6 +220,13 @@ async function getAdminData() {
         ? Math.round((emailsSent / (emailsSent + emailsFailed)) * 100)
         : 0,
     },
+    webhooks: {
+      total: webhookTotal || 0,
+      success: webhookSuccess || 0,
+      successRate: (webhookTotal || 0) > 0
+        ? Math.round(((webhookSuccess || 0) / (webhookTotal || 0)) * 100)
+        : 0,
+    },
     signupsByDay,
     donations: {
       total: totalDonations,
@@ -189,6 +234,7 @@ async function getAdminData() {
       recent: donations || [],
     },
     oauthFailures: oauthFailures || [],
+    webhookFailures: webhookFailures || [],
     users: usersWithStatus,
   }
 }

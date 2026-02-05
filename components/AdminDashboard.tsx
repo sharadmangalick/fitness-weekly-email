@@ -13,6 +13,17 @@ interface OAuthFailure {
   created_at: string
 }
 
+interface WebhookFailure {
+  flow_id: string
+  stripe_event_id: string | null
+  stripe_event_type: string
+  step: string
+  status: string
+  error_code: string | null
+  error_message: string | null
+  created_at: string
+}
+
 interface UserInfo {
   id: string
   email: string
@@ -39,6 +50,11 @@ interface AdminData {
     failed: number
     successRate: number
   }
+  webhooks: {
+    total: number
+    success: number
+    successRate: number
+  }
   signupsByDay: Record<string, number>
   donations: {
     total: number
@@ -46,6 +62,7 @@ interface AdminData {
     recent: Array<{ amount_cents: number; email: string | null; created_at: string }>
   }
   oauthFailures: OAuthFailure[]
+  webhookFailures: WebhookFailure[]
   users: UserInfo[]
 }
 
@@ -185,6 +202,16 @@ export default function AdminDashboard({ data }: { data: AdminData }) {
           <StatCard title="Sent" value={data.emails.sent} color="green" />
           <StatCard title="Failed" value={data.emails.failed} color="red" />
           <StatCard title="Success Rate" value={`${data.emails.successRate}%`} color="blue" />
+        </div>
+      </section>
+
+      {/* Webhook Stats */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Webhook Stats (Last 24 Hours)</h2>
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard title="Total Webhooks" value={data.webhooks.total} color="blue" />
+          <StatCard title="Successful" value={data.webhooks.success} color="green" />
+          <StatCard title="Success Rate" value={`${data.webhooks.successRate}%`} color={data.webhooks.successRate >= 95 ? 'green' : 'red'} />
         </div>
       </section>
 
@@ -347,7 +374,7 @@ export default function AdminDashboard({ data }: { data: AdminData }) {
 
       {/* Debugging Tools */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Strava Connection Debugging</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Debugging Tools</h2>
 
         {/* Recent OAuth Failures */}
         <div className="bg-white rounded-lg border border-gray-200 mb-4">
@@ -394,6 +421,56 @@ export default function AdminDashboard({ data }: { data: AdminData }) {
             </div>
           ) : (
             <p className="text-gray-500 text-center py-8">No OAuth failures in the last 7 days</p>
+          )}
+        </div>
+
+        {/* Recent Webhook Failures */}
+        <div className="bg-white rounded-lg border border-gray-200 mb-4">
+          <h3 className="font-medium text-gray-900 p-4 border-b border-gray-200">
+            Recent Webhook Failures (Last 7 Days)
+            {data.webhookFailures.length > 0 && (
+              <span className="ml-2 text-sm font-normal text-red-600">
+                {data.webhookFailures.length} failure{data.webhookFailures.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </h3>
+          {data.webhookFailures.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-left">
+                  <tr>
+                    <th className="px-4 py-2 font-medium text-gray-600">Time</th>
+                    <th className="px-4 py-2 font-medium text-gray-600">Flow ID</th>
+                    <th className="px-4 py-2 font-medium text-gray-600">Event Type</th>
+                    <th className="px-4 py-2 font-medium text-gray-600">Step</th>
+                    <th className="px-4 py-2 font-medium text-gray-600">Error</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {data.webhookFailures.map((failure, i) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 text-gray-500 whitespace-nowrap">
+                        {formatDate(failure.created_at)}
+                      </td>
+                      <td className="px-4 py-2">
+                        <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono">
+                          {failure.flow_id}
+                        </code>
+                      </td>
+                      <td className="px-4 py-2 text-gray-700 text-xs">{failure.stripe_event_type}</td>
+                      <td className="px-4 py-2 text-gray-700">{failure.step}</td>
+                      <td className="px-4 py-2 text-red-600 text-xs">
+                        {failure.error_code && <span className="font-medium">{failure.error_code}: </span>}
+                        {failure.error_message?.substring(0, 60)}
+                        {(failure.error_message?.length || 0) > 60 && '...'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-8">No webhook failures in the last 7 days 🎉</p>
           )}
         </div>
 
@@ -468,6 +545,211 @@ LIMIT 20;`}
               </div>
             </div>
           )}
+        </div>
+
+        {/* Webhook Debugging */}
+        <div className="bg-white rounded-lg border border-gray-200 mt-4">
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="font-medium text-gray-900">Stripe Webhook Debugging</h3>
+            <p className="text-sm text-gray-500 mt-1">Track and debug donation webhook processing</p>
+          </div>
+
+          <div className="px-4 pb-4 space-y-4">
+            <div className="mt-4">
+              <h4 className="font-medium text-gray-800 mb-2">Quick Health Check:</h4>
+              <div className="relative">
+                <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
+{`-- Recent webhook attempts (last 24 hours)
+SELECT
+  flow_id,
+  stripe_event_type,
+  step,
+  status,
+  error_code,
+  created_at
+FROM webhook_attempts
+WHERE created_at > NOW() - INTERVAL '24 hours'
+ORDER BY created_at DESC
+LIMIT 20;`}
+                </pre>
+                <button
+                  onClick={() => copyToClipboard(`SELECT flow_id, stripe_event_type, step, status, error_code, created_at
+FROM webhook_attempts
+WHERE created_at > NOW() - INTERVAL '24 hours'
+ORDER BY created_at DESC
+LIMIT 20;`)}
+                  className="absolute top-2 right-2 text-gray-400 hover:text-white text-xs"
+                >
+                  {copiedQuery ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-gray-800 mb-2">When a user reports missing donation:</h4>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600 mb-3">
+                <li>Ask for their email and approximate donation time</li>
+                <li>Check Stripe dashboard for the session ID (cs_xxx)</li>
+                <li>Use the query below to find the webhook processing details</li>
+              </ol>
+              <div className="relative">
+                <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
+{`-- Find webhook by session ID
+SELECT * FROM webhook_attempts
+WHERE metadata->>'sessionId' = 'cs_xxxxx'
+ORDER BY created_at;
+
+-- Check if donation was created
+SELECT * FROM donations
+WHERE stripe_session_id = 'cs_xxxxx';`}
+                </pre>
+                <button
+                  onClick={() => copyToClipboard(`-- Find webhook by session ID
+SELECT * FROM webhook_attempts
+WHERE metadata->>'sessionId' = 'cs_xxxxx'
+ORDER BY created_at;
+
+-- Check if donation was created
+SELECT * FROM donations
+WHERE stripe_session_id = 'cs_xxxxx';`)}
+                  className="absolute top-2 right-2 text-gray-400 hover:text-white text-xs"
+                >
+                  {copiedQuery ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-gray-800 mb-2">Find webhook failures:</h4>
+              <div className="relative">
+                <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
+{`-- Recent failures (last 7 days)
+SELECT
+  flow_id,
+  stripe_event_id,
+  stripe_event_type,
+  step,
+  error_code,
+  error_message,
+  created_at
+FROM webhook_attempts
+WHERE status = 'failed'
+  AND created_at > NOW() - INTERVAL '7 days'
+ORDER BY created_at DESC;`}
+                </pre>
+                <button
+                  onClick={() => copyToClipboard(`SELECT flow_id, stripe_event_id, stripe_event_type, step, error_code, error_message, created_at
+FROM webhook_attempts
+WHERE status = 'failed' AND created_at > NOW() - INTERVAL '7 days'
+ORDER BY created_at DESC;`)}
+                  className="absolute top-2 right-2 text-gray-400 hover:text-white text-xs"
+                >
+                  {copiedQuery ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-gray-800 mb-2">Trace specific webhook flow:</h4>
+              <div className="relative">
+                <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
+{`-- Use flow_id or stripe_event_id from logs
+SELECT
+  step,
+  status,
+  duration_ms,
+  error_code,
+  error_message,
+  metadata,
+  created_at
+FROM webhook_attempts
+WHERE flow_id = 'stripe-xxxxx'
+   OR stripe_event_id = 'evt_xxxxx'
+ORDER BY created_at;`}
+                </pre>
+                <button
+                  onClick={() => copyToClipboard(`SELECT step, status, duration_ms, error_code, error_message, metadata, created_at
+FROM webhook_attempts
+WHERE flow_id = 'stripe-xxxxx' OR stripe_event_id = 'evt_xxxxx'
+ORDER BY created_at;`)}
+                  className="absolute top-2 right-2 text-gray-400 hover:text-white text-xs"
+                >
+                  {copiedQuery ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-gray-800 mb-2">Check for duplicate donations:</h4>
+              <div className="relative">
+                <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
+{`-- Should return 0 rows
+SELECT
+  stripe_session_id,
+  COUNT(*) as count
+FROM donations
+GROUP BY stripe_session_id
+HAVING COUNT(*) > 1;`}
+                </pre>
+                <button
+                  onClick={() => copyToClipboard(`SELECT stripe_session_id, COUNT(*) as count
+FROM donations
+GROUP BY stripe_session_id
+HAVING COUNT(*) > 1;`)}
+                  className="absolute top-2 right-2 text-gray-400 hover:text-white text-xs"
+                >
+                  {copiedQuery ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-gray-800 mb-2">Performance metrics:</h4>
+              <div className="relative">
+                <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
+{`-- Average processing time by step
+SELECT
+  step,
+  COUNT(*) as attempts,
+  ROUND(AVG(duration_ms)::numeric, 2) as avg_ms,
+  MAX(duration_ms) as max_ms
+FROM webhook_attempts
+WHERE duration_ms IS NOT NULL
+  AND created_at > NOW() - INTERVAL '7 days'
+GROUP BY step
+ORDER BY avg_ms DESC;`}
+                </pre>
+                <button
+                  onClick={() => copyToClipboard(`SELECT step, COUNT(*) as attempts, ROUND(AVG(duration_ms)::numeric, 2) as avg_ms, MAX(duration_ms) as max_ms
+FROM webhook_attempts
+WHERE duration_ms IS NOT NULL AND created_at > NOW() - INTERVAL '7 days'
+GROUP BY step
+ORDER BY avg_ms DESC;`)}
+                  className="absolute top-2 right-2 text-gray-400 hover:text-white text-xs"
+                >
+                  {copiedQuery ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-gray-800 mb-2">Common error codes:</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
+                <li><code className="bg-gray-100 px-1 rounded">SIGNATURE_MISSING</code> - No stripe-signature header (test requests)</li>
+                <li><code className="bg-gray-100 px-1 rounded">SIGNATURE_INVALID</code> - Wrong webhook secret configured</li>
+                <li><code className="bg-gray-100 px-1 rounded">WEBHOOK_SECRET_MISSING</code> - Environment variable not set</li>
+                <li><code className="bg-gray-100 px-1 rounded">DB_INSERT_FAILED</code> - Database operation failed (Stripe will retry)</li>
+              </ul>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
+              <p className="font-medium text-blue-900 mb-1">💡 Pro Tip:</p>
+              <p className="text-blue-800">
+                All queries should be run in <strong>Supabase Dashboard → SQL Editor</strong>.
+                Flow IDs appear in Vercel logs and can be used to trace the full webhook lifecycle.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
     </div>
