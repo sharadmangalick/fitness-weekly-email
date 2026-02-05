@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: 'payment',
-      success_url: `${appUrl}/donate/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/donate`,
+      success_url: `${appUrl}/support/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/support`,
       submit_type: 'donate',
     })
 

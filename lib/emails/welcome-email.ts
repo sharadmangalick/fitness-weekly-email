@@ -149,7 +149,7 @@ export function generateWelcomeEmailHtml(userName: string, dashboardUrl: string)
                 Questions? Just reply to this email - we're here to help!
               </p>
               <p style="color: #888; font-size: 12px; margin: 0 0 12px 0;">
-                Find this useful? A little support helps keep RunPlan running. <a href="https://www.runplan.fun/donate" style="color: #764ba2; text-decoration: underline;">Support here</a>
+                Find this useful? A little support helps keep RunPlan running. <a href="https://www.runplan.fun/support" style="color: #764ba2; text-decoration: underline;">Support here</a>
               </p>
               <p style="color: #bbb; font-size: 11px; margin: 0;">
                 RunPlan.fun
