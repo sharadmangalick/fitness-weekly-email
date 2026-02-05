@@ -45,6 +45,10 @@ export interface Activity {
   elevation_gain_ft?: number
   calories?: number
   avg_cadence?: number
+  // RPE fields (Garmin-specific, optional for backwards compatibility)
+  perceived_exertion?: number      // User-logged RPE (1-10 scale)
+  aerobic_training_effect?: number // Garmin's aerobic training effect (1-5)
+  anaerobic_training_effect?: number // Garmin's anaerobic training effect (1-5)
 }
 
 export interface SleepData {

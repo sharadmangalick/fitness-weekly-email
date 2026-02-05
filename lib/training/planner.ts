@@ -116,14 +116,23 @@ function getTargetPace(goalTimeMinutes: number | null, goalType: string, customD
 
 /**
  * Calculate recovery adjustment based on analysis results
+ * Includes RPE analysis when available (backwards compatible)
  */
 export function calculateRecoveryAdjustment(analysis: AnalysisResults): number {
   let concerns = 0
 
+  // Existing concerns (unchanged for backwards compatibility)
   if (analysis.resting_hr.available && analysis.resting_hr.status === 'concern') concerns++
   if (analysis.body_battery.available && analysis.body_battery.status === 'concern') concerns++
   if (analysis.sleep.available && analysis.sleep.status === 'concern') concerns++
 
+  // RPE-based concerns (only if RPE data exists)
+  if (analysis.rpe?.available) {
+    if (analysis.rpe.trend === 'rising') concerns++
+    if ((analysis.rpe.fatigue_indicators ?? 0) >= 2) concerns++
+  }
+
+  if (concerns >= 4) return 0.75
   if (concerns >= 3) return 0.80
   if (concerns >= 2) return 0.85
   if (concerns === 1) return 0.90
@@ -440,6 +449,16 @@ function generateRecoveryRecommendations(analysis: AnalysisResults, recoveryAdju
     recs.push('Body Battery is low. Prioritize sleep and reduce stress where possible.')
   }
 
+  // RPE-based recovery recommendations (only if RPE data available)
+  if (analysis.rpe?.available) {
+    if (analysis.rpe.trend === 'rising') {
+      recs.push('RPE trending up - workouts are feeling harder. Consider swapping a hard session for an easy one.')
+    }
+    if ((analysis.rpe.fatigue_indicators ?? 0) >= 2) {
+      recs.push('High effort with low training effect detected - your body may be under-recovered.')
+    }
+  }
+
   if (recoveryAdjustment < 0.85) {
     recs.push('Multiple fatigue indicators present - consider a recovery week with reduced intensity.')
   }
@@ -626,6 +645,16 @@ export function getRecoveryConcerns(analysis: AnalysisResults): string[] {
   }
   if (analysis.sleep.available && analysis.sleep.status === 'concern') {
     concerns.push('poor_sleep')
+  }
+
+  // RPE-based concerns (only if RPE data available)
+  if (analysis.rpe?.available) {
+    if (analysis.rpe.trend === 'rising') {
+      concerns.push('rising_rpe')
+    }
+    if ((analysis.rpe.fatigue_indicators ?? 0) >= 2) {
+      concerns.push('rpe_fatigue')
+    }
   }
 
   return concerns

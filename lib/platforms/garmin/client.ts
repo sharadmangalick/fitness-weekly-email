@@ -33,6 +33,10 @@ export interface GarminActivityRaw {
   elevationGain?: number
   calories?: number
   averageRunningCadenceInStepsPerMinute?: number
+  // RPE fields - user-logged perceived exertion and Garmin's training effect
+  perceivedExertion?: number           // User-logged RPE (1-10)
+  aerobicTrainingEffect?: number       // Garmin's aerobic training effect (1-5)
+  anaerobicTrainingEffect?: number     // Garmin's anaerobic training effect (1-5)
 }
 
 export interface GarminSleepRaw {
@@ -158,8 +162,10 @@ export class GarminClient {
         // Additional params would go here for date filtering
       )
 
-      // Filter activities by date
-      return (activities || []).filter((activity: GarminActivityRaw) => {
+      // Filter activities by date and cast to our extended type
+      // Note: garmin-connect IActivity type is incomplete, but the actual API
+      // returns additional fields including RPE data
+      return ((activities || []) as unknown as GarminActivityRaw[]).filter((activity) => {
         const activityDate = new Date(activity.startTimeLocal)
         return activityDate >= startDate && activityDate <= endDate
       })

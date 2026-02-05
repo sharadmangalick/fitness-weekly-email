@@ -150,6 +150,20 @@ export const sampleAnalysisResults: AnalysisResults = {
     very_active_days: 3,
     variability: 'moderate',
   },
+  rpe: {
+    available: true,
+    avg_rpe: 5.2,
+    min: 3,
+    max: 8,
+    trend: 'stable',
+    status: 'normal',
+    hard_workout_count: 2,
+    easy_workout_count: 3,
+    moderate_workout_count: 5,
+    fatigue_indicators: 0,
+    activities_with_rpe: 10,
+    total_activities: 18,
+  },
   day_of_week: {
     available: true,
     by_day: {

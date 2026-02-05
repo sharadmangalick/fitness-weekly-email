@@ -76,6 +76,18 @@ export interface StepsAnalysis extends MetricAnalysis {
   variability?: 'high' | 'moderate' | 'low'
 }
 
+export interface RPEAnalysis extends MetricAnalysis {
+  avg_rpe?: number
+  hard_workout_count?: number     // RPE >= 7
+  easy_workout_count?: number     // RPE <= 3
+  moderate_workout_count?: number // RPE 4-6
+  fatigue_indicators?: number     // Count of high RPE + low training effect
+  activities_with_rpe?: number    // Count of activities that have RPE data
+  total_activities?: number       // Total activities analyzed
+  // Override trend to use more specific values for RPE context
+  // Note: 'rising' maps to 'increasing' and 'falling' maps to 'decreasing' conceptually
+}
+
 export interface DayOfWeekAnalysis {
   available: boolean
   by_day?: Record<string, {
@@ -113,6 +125,7 @@ export interface AnalysisResults {
   sedentary: SedentaryAnalysis
   stress: StressAnalysis
   steps: StepsAnalysis
+  rpe: RPEAnalysis
   day_of_week: DayOfWeekAnalysis
   recommendations: Recommendation[]
 }
@@ -152,6 +165,7 @@ export class TrainingAnalyzer {
     const sedentary = this.analyzeSedentary()
     const stress = this.analyzeStress()
     const steps = this.analyzeSteps()
+    const rpe = this.analyzeRPE()
     const day_of_week = this.analyzeDayOfWeek()
 
     // Store partial results for recommendation generation
@@ -163,6 +177,7 @@ export class TrainingAnalyzer {
       sedentary,
       stress,
       steps,
+      rpe,
       day_of_week,
     }
 
@@ -177,6 +192,7 @@ export class TrainingAnalyzer {
       sedentary,
       stress,
       steps,
+      rpe,
       day_of_week,
       recommendations,
     }
@@ -400,6 +416,93 @@ export class TrainingAnalyzer {
     }
   }
 
+  /**
+   * Analyze RPE (Rate of Perceived Exertion) data
+   * RPE is optional - gracefully handles missing data
+   */
+  private analyzeRPE(): RPEAnalysis {
+    const totalActivities = this.data.activities.length
+    const activitiesWithRPE = this.data.activities.filter(a =>
+      a.perceived_exertion !== undefined && a.perceived_exertion > 0
+    )
+
+    if (activitiesWithRPE.length === 0) {
+      return {
+        available: false,
+        total_activities: totalActivities,
+        activities_with_rpe: 0,
+      }
+    }
+
+    const rpeValues = activitiesWithRPE.map(a => a.perceived_exertion!)
+
+    // Categorize workouts by RPE
+    const hardWorkouts = activitiesWithRPE.filter(a => a.perceived_exertion! >= 7).length
+    const easyWorkouts = activitiesWithRPE.filter(a => a.perceived_exertion! <= 3).length
+    const moderateWorkouts = activitiesWithRPE.filter(a =>
+      a.perceived_exertion! > 3 && a.perceived_exertion! < 7
+    ).length
+
+    // Detect fatigue indicators: high RPE (>= 6) combined with low training effect (< 2.5)
+    const fatigueIndicators = activitiesWithRPE.filter(a =>
+      a.perceived_exertion! >= 6 &&
+      a.aerobic_training_effect !== undefined &&
+      a.aerobic_training_effect < 2.5
+    ).length
+
+    // Calculate trend by comparing recent 5 activities vs earlier ones
+    // Use 'rising' for increasing RPE (concerning) and 'falling' for decreasing (improving)
+    const avgRPE = mean(rpeValues)
+    let trend: 'stable' | 'rising' | 'falling' = 'stable'
+
+    if (rpeValues.length >= 5) {
+      // Sort activities by date to get chronological order
+      const sortedActivities = [...activitiesWithRPE].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      )
+      const sortedRPE = sortedActivities.map(a => a.perceived_exertion!)
+
+      const recentCount = Math.min(5, Math.floor(sortedRPE.length / 2))
+      const recentRPE = sortedRPE.slice(-recentCount)
+      const earlierRPE = sortedRPE.slice(0, -recentCount)
+
+      if (earlierRPE.length > 0 && recentRPE.length > 0) {
+        const recentAvg = mean(recentRPE)
+        const earlierAvg = mean(earlierRPE)
+        const change = recentAvg - earlierAvg
+
+        // Threshold of 0.5 for trend detection
+        // Rising RPE = workouts feeling harder (concerning)
+        // Falling RPE = workouts feeling easier (good)
+        if (change > 0.5) trend = 'rising'
+        else if (change < -0.5) trend = 'falling'
+      }
+    }
+
+    // Determine status based on trend and fatigue indicators
+    let status: 'good' | 'normal' | 'concern' = 'normal'
+    if (trend === 'rising' || fatigueIndicators >= 2) {
+      status = 'concern'
+    } else if (trend === 'falling' && fatigueIndicators === 0) {
+      status = 'good'
+    }
+
+    return {
+      available: true,
+      avg_rpe: Math.round(avgRPE * 10) / 10,
+      min: Math.min(...rpeValues),
+      max: Math.max(...rpeValues),
+      trend,
+      status,
+      hard_workout_count: hardWorkouts,
+      easy_workout_count: easyWorkouts,
+      moderate_workout_count: moderateWorkouts,
+      fatigue_indicators: fatigueIndicators,
+      activities_with_rpe: activitiesWithRPE.length,
+      total_activities: totalActivities,
+    }
+  }
+
   private analyzeDayOfWeek(): DayOfWeekAnalysis {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     const byDay: Record<string, { sleep: number[]; bb: number[]; stress: number[]; steps: number[] }> = {}
@@ -521,6 +624,42 @@ export class TrainingAnalyzer {
         recommendation: 'Aim for more consistent daily movement rather than extreme swings.',
         science: 'Consistent moderate activity supports better recovery than feast/famine patterns.',
       })
+    }
+
+    // Check RPE trend and fatigue indicators (only if RPE data available)
+    if (results.rpe?.available) {
+      if (results.rpe.trend === 'rising') {
+        recs.push({
+          category: 'Training Load',
+          priority: 'high',
+          finding: `RPE trend is rising (avg: ${results.rpe.avg_rpe}) - workouts feeling harder than usual`,
+          recommendation: 'Consider reducing training intensity this week. Add an extra rest day or swap a hard workout for an easy one.',
+          science: 'Rising RPE at similar workloads is an early indicator of accumulated fatigue, often appearing before RHR or HRV changes.',
+        })
+      }
+
+      if ((results.rpe.fatigue_indicators ?? 0) >= 2) {
+        recs.push({
+          category: 'Recovery',
+          priority: 'high',
+          finding: `${results.rpe.fatigue_indicators} workouts showed high RPE with low training effect - a fatigue marker`,
+          recommendation: 'Your body may be struggling to adapt. Focus on recovery: prioritize sleep, reduce intensity, and consider a recovery week.',
+          science: 'High perceived effort with low physiological response suggests the body is under-recovered and needs more rest.',
+        })
+      }
+
+      // Check workout distribution - too many hard workouts
+      const totalWithRPE = results.rpe.activities_with_rpe ?? 0
+      const hardPct = totalWithRPE > 0 ? ((results.rpe.hard_workout_count ?? 0) / totalWithRPE) * 100 : 0
+      if (hardPct > 30 && totalWithRPE >= 5) {
+        recs.push({
+          category: 'Training Balance',
+          priority: 'medium',
+          finding: `${Math.round(hardPct)}% of workouts are high intensity (RPE >= 7)`,
+          recommendation: 'Follow the 80/20 rule: ~80% of training should be easy. Add more recovery runs between hard sessions.',
+          science: 'Elite athletes typically maintain an 80/20 easy-to-hard ratio. Too much intensity impairs adaptation and increases injury risk.',
+        })
+      }
     }
 
     return recs

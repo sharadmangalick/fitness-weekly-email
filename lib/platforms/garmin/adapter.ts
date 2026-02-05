@@ -144,6 +144,10 @@ export class GarminAdapter implements FitnessPlatform {
       elevation_gain_ft: raw.elevationGain ? Math.round(raw.elevationGain * 3.28084) : undefined,
       calories: raw.calories,
       avg_cadence: raw.averageRunningCadenceInStepsPerMinute,
+      // RPE fields (optional - may not be present in all activities)
+      perceived_exertion: raw.perceivedExertion,
+      aerobic_training_effect: raw.aerobicTrainingEffect,
+      anaerobic_training_effect: raw.anaerobicTrainingEffect,
     }
   }
 
