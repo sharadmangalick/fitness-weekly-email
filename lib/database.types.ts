@@ -199,6 +199,47 @@ export interface Database {
           created_at?: string
         }
       }
+      webhook_attempts: {
+        Row: {
+          id: string
+          flow_id: string
+          stripe_event_id: string | null
+          stripe_event_type: string
+          step: string
+          status: string
+          duration_ms: number | null
+          error_code: string | null
+          error_message: string | null
+          metadata: Record<string, unknown> | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          flow_id: string
+          stripe_event_id?: string | null
+          stripe_event_type: string
+          step: string
+          status: string
+          duration_ms?: number | null
+          error_code?: string | null
+          error_message?: string | null
+          metadata?: Record<string, unknown> | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          flow_id?: string
+          stripe_event_id?: string | null
+          stripe_event_type?: string
+          step?: string
+          status?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          error_message?: string | null
+          metadata?: Record<string, unknown> | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -218,6 +259,7 @@ export type PlatformConnection = Database['public']['Tables']['platform_connecti
 export type TrainingConfig = Database['public']['Tables']['training_configs']['Row']
 export type EmailHistory = Database['public']['Tables']['email_history']['Row']
 export type OAuthAttempt = Database['public']['Tables']['oauth_attempts']['Row']
+export type WebhookAttempt = Database['public']['Tables']['webhook_attempts']['Row']
 
 // Plan modification type (not in auto-generated schema yet)
 export interface PlanModification {
