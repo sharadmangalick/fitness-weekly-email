@@ -6,6 +6,8 @@ import { trackGoalConfigured } from '@/components/GoogleAnalytics'
 
 interface GoalWizardProps {
   initialConfig?: any
+  calculatedMileage?: number | null      // Pre-calculated from platform data
+  mileageConfidence?: 'high' | 'medium' | 'low' | null  // Confidence in calculated mileage
   onClose: () => void
   onSave: () => void
   onPlanGenerate?: () => void  // Optional callback to trigger plan generation after saving
@@ -20,7 +22,7 @@ const RACE_DISTANCES: Record<string, number> = {
   'ultra': 50.0,
 }
 
-export default function GoalWizard({ initialConfig, onClose, onSave, onPlanGenerate, embedded = false }: GoalWizardProps) {
+export default function GoalWizard({ initialConfig, calculatedMileage, mileageConfidence, onClose, onSave, onPlanGenerate, embedded = false }: GoalWizardProps) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [generatingPlan, setGeneratingPlan] = useState(false)
@@ -38,7 +40,9 @@ export default function GoalWizard({ initialConfig, onClose, onSave, onPlanGener
   const [goalMinutes, setGoalMinutes] = useState(
     initialConfig?.goal_time_minutes ? initialConfig.goal_time_minutes % 60 : 45
   )
-  const [currentMileage, setCurrentMileage] = useState(initialConfig?.current_weekly_mileage ?? 20)
+  const [currentMileage, setCurrentMileage] = useState(
+    initialConfig?.current_weekly_mileage ?? calculatedMileage ?? 20
+  )
   const [targetMileage, setTargetMileage] = useState(initialConfig?.target_weekly_mileage || 50)
   const [experienceLevel, setExperienceLevel] = useState(initialConfig?.experience_level || 'intermediate')
   const [longRunDay, setLongRunDay] = useState(initialConfig?.preferred_long_run_day || 'sunday')
@@ -268,6 +272,12 @@ export default function GoalWizard({ initialConfig, onClose, onSave, onPlanGener
               onChange={(e) => setCurrentMileage(e.target.value === '' ? 0 : parseInt(e.target.value))}
               className="input-field"
             />
+            {calculatedMileage && !initialConfig?.current_weekly_mileage && (
+              <p className="text-sm text-gray-500 mt-1">
+                Based on your last 4 weeks of training
+                {mileageConfidence === 'low' && ' (limited data)'}
+              </p>
+            )}
           </div>
 
           <div>

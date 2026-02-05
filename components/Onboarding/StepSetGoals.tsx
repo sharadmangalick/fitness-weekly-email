@@ -1,6 +1,7 @@
 'use client'
 
 import GoalWizard from '@/components/GoalWizard'
+import { useCalculatedMileage } from '@/hooks/useCalculatedMileage'
 
 interface TrainingConfig {
   goal_category: 'race' | 'non_race'
@@ -22,6 +23,8 @@ export default function StepSetGoals({
   onSave,
   onPlanGenerate,
 }: StepSetGoalsProps) {
+  const { calculatedMileage, isLoading, confidence } = useCalculatedMileage()
+
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
@@ -38,8 +41,16 @@ export default function StepSetGoals({
         </p>
       </div>
 
+      {isLoading && (
+        <p className="text-sm text-gray-500 animate-pulse text-center">
+          Analyzing your recent training...
+        </p>
+      )}
+
       <GoalWizard
         initialConfig={initialConfig}
+        calculatedMileage={calculatedMileage}
+        mileageConfidence={confidence}
         onClose={() => {}} // No-op since we're in embedded mode
         onSave={onSave}
         onPlanGenerate={onPlanGenerate}

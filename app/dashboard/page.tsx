@@ -10,6 +10,8 @@ import TrainingPlanView from '@/components/TrainingPlanView'
 import FullPlanOverview from '@/components/FullPlanOverview'
 import OnboardingFlow from '@/components/Onboarding/OnboardingFlow'
 import OnboardingBanner from '@/components/Onboarding/OnboardingBanner'
+import MileageMismatchBanner from '@/components/MileageMismatchBanner'
+import { useCalculatedMileage } from '@/hooks/useCalculatedMileage'
 import type { TrainingPlan } from '@/lib/training/planner'
 import type { AnalysisResults } from '@/lib/training/analyzer'
 import { setUserId, trackPlatformConnection } from '@/components/GoogleAnalytics'
@@ -66,9 +68,19 @@ export default function DashboardPage() {
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>('not_started')
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [connectionError, setConnectionError] = useState<{ message: string; flowId?: string } | null>(null)
+  const [mileageBannerDismissed, setMileageBannerDismissed] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createBrowserClient()
+  const { calculatedMileage } = useCalculatedMileage()
+
+  // Load mileage banner dismissal state from localStorage
+  useEffect(() => {
+    const dismissed = localStorage.getItem('mileage-banner-dismissed')
+    if (dismissed === 'true') {
+      setMileageBannerDismissed(true)
+    }
+  }, [])
 
   useEffect(() => {
     loadUserData()
@@ -317,8 +329,45 @@ export default function DashboardPage() {
     setShowOnboarding(true)
   }
 
-  // Check if we should show the banner (skipped onboarding but not fully set up)
+  // Check if we should show the onboarding banner (skipped onboarding but not fully set up)
   const shouldShowBanner = onboardingStatus === 'skipped' && (connections.length === 0 || !config)
+
+  // Check if we should show the mileage mismatch banner
+  const showMileageMismatchBanner = config &&
+    calculatedMileage !== null &&
+    calculatedMileage > 0 &&
+    Math.abs(calculatedMileage - config.current_weekly_mileage) / config.current_weekly_mileage > 0.3 &&
+    !mileageBannerDismissed
+
+  const handleMileageUpdate = async (newMileage: number) => {
+    if (!user) return
+
+    try {
+      // Update config in database
+      const { error } = await (supabase as any)
+        .from('training_configs')
+        .update({ current_weekly_mileage: newMileage })
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('Error updating mileage:', error)
+        return
+      }
+
+      // Update local state
+      setConfig(prev => prev ? { ...prev, current_weekly_mileage: newMileage } : prev)
+
+      // Regenerate plan with new mileage
+      generatePlan(true)
+    } catch (err) {
+      console.error('Error updating mileage:', err)
+    }
+  }
+
+  const handleMileageBannerDismiss = () => {
+    localStorage.setItem('mileage-banner-dismissed', 'true')
+    setMileageBannerDismissed(true)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -373,6 +422,16 @@ export default function DashboardPage() {
             hasConnections={connections.length > 0}
             hasConfig={!!config}
             onResume={handleResumeOnboarding}
+          />
+        )}
+
+        {/* Mileage Mismatch Banner for existing users */}
+        {showMileageMismatchBanner && config && calculatedMileage !== null && (
+          <MileageMismatchBanner
+            configuredMileage={config.current_weekly_mileage}
+            calculatedMileage={calculatedMileage}
+            onUpdate={handleMileageUpdate}
+            onDismiss={handleMileageBannerDismiss}
           />
         )}
 
