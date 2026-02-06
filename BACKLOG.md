@@ -213,50 +213,7 @@ Last Updated: 2026-02-06
 
 ## 🟡 Medium Priority - Quick Wins
 
-### 3. Exit Intent Modal
-
-**Status**: Discussed as "Quick Win Still Available" in LANDING_PAGE_IMPROVEMENTS.md
-
-**Description**: Display a last-chance offer or value reminder when user attempts to leave the landing page without signing up.
-
-**Why It Matters**:
-- Recovers 10-15% of abandoning visitors
-- Low implementation cost
-- Can A/B test different messaging
-
-**Implementation Ideas**:
-- Trigger on mouse moving toward browser chrome (desktop)
-- Trigger on back button press (mobile)
-- Messaging options:
-  - "Wait! See a sample plan first" → Show quick email preview
-  - "Join 500+ runners who improved their training" (when comfortable showing numbers)
-  - "Free forever - no credit card required"
-
-**Estimated Impact**: Medium (10-15% bounce rate reduction)
-
-**Estimated Effort**: 3-4 hours
-- Exit intent detection logic: 1 hour
-- Modal component: 1 hour
-- Analytics tracking: 1 hour
-- Mobile testing: 1 hour
-
-**Files to Create**:
-- `/components/ExitIntentModal.tsx`
-
-**Files to Modify**:
-- `/app/page.tsx`
-- `/components/GoogleAnalytics.tsx`
-
-**Dependencies**: None
-
-**Considerations**:
-- Don't show if user already visited signup page
-- Frequency cap (once per session, or once per 7 days)
-- Must be non-intrusive on mobile
-
----
-
-### 4. Social Proof Numbers
+### 3. Social Proof Numbers
 
 **Status**: User prefers not to show yet, but available when ready
 
@@ -295,7 +252,7 @@ Last Updated: 2026-02-06
 
 ---
 
-### 5. Testimonials Section
+### 4. Testimonials Section
 
 **Status**: Waiting for real user testimonials
 
@@ -343,7 +300,7 @@ Last Updated: 2026-02-06
 
 ## 🟢 Low Priority - Nice to Have
 
-### 6. Interactive Email Preview
+### 5. Interactive Email Preview
 
 **Status**: Current implementation is static; could be enhanced
 
@@ -379,7 +336,7 @@ Last Updated: 2026-02-06
 
 ---
 
-### 7. A/B Testing Framework
+### 6. A/B Testing Framework
 
 **Status**: Infrastructure for testing conversion optimizations
 
@@ -420,7 +377,7 @@ Last Updated: 2026-02-06
 
 ---
 
-### 8. Additional OAuth Providers
+### 7. Additional OAuth Providers
 
 **Status**: After Apple + Google are successful
 
@@ -454,9 +411,9 @@ Last Updated: 2026-02-06
 
 ---
 
-### 9. Sample Week Comparison
+### 8. Sample Week Comparison
 
-**Status**: Landing page enhancement idea
+**Status**: ✅ COMPLETED (2026-02-06)
 
 **Description**: Side-by-side comparison showing "Generic Training Plan" vs "RunPlan.fun Personalized Plan" for the same week.
 
@@ -489,7 +446,7 @@ Wednesday: Speed work   |  Wednesday: 6x400m @ 7:30 pace (based on your PR)
 
 ---
 
-### 10. Video Demo
+### 9. Video Demo
 
 **Status**: Future content idea
 
@@ -525,7 +482,7 @@ Wednesday: Speed work   |  Wednesday: 6x400m @ 7:30 pace (based on your PR)
 
 ---
 
-### 11. FAQ Expansion
+### 10. FAQ Expansion
 
 **Status**: Current FAQ has 7 questions; could expand if needed
 
