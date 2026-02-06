@@ -631,7 +631,7 @@ export default function HomePage() {
               See What You'll Get Every Week
             </h2>
             <p className="text-slate-700 text-lg max-w-2xl mx-auto">
-              No app to check, no spreadsheets to maintain. Just a clean, actionable training plan delivered to your inbox every Monday morning.
+              No app to check, no spreadsheets to maintain. Just a clean, actionable training plan delivered to your inbox every Sunday morning.
             </p>
           </div>
 
