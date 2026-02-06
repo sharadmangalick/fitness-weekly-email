@@ -775,14 +775,24 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="relative z-10 py-12 px-6 border-t border-orange-100">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center">
-              <span className="text-sm">🏃‍♂️</span>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center">
+                <span className="text-sm">🏃‍♂️</span>
+              </div>
+              <span className="font-semibold text-slate-900">RunPlan</span>
             </div>
-            <span className="font-semibold text-slate-900">RunPlan</span>
+            <div className="flex gap-6 text-sm">
+              <Link href="/privacy" className="text-slate-600 hover:text-slate-900 transition-colors">
+                Privacy Policy
+              </Link>
+              <Link href="/support" className="text-slate-600 hover:text-slate-900 transition-colors">
+                Support
+              </Link>
+            </div>
           </div>
-          <p className="text-slate-600 text-sm">
+          <p className="text-slate-600 text-sm text-center md:text-left">
             © {new Date().getFullYear()} RunPlan. Run smarter, not harder.
           </p>
         </div>
