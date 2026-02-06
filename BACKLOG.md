@@ -26,15 +26,7 @@ Last Updated: 2026-02-06
 - Apple Developer Account is available
 - Supabase already configured for auth
 
-**Estimated Impact**: High (50-70% increase in signup conversions)
-
-**Estimated Effort**: 8 hours
-- Supabase OAuth configuration: 1 hour
-- AuthProviderButton component: 1 hour
-- Update signup page: 2 hours
-- Update login page: 1 hour
-- OAuth callback handler: 2 hours
-- Analytics + testing: 1 hour
+**Expected Impact**: High (50-70% increase in signup conversions)
 
 **Files to Create**:
 - `/components/AuthProviderButton.tsx`
@@ -100,22 +92,12 @@ Last Updated: 2026-02-06
 - Approval typically takes 2 business days
 - Business registration required (user has completed)
 
-**Estimated Impact**: Very High
+**Expected Impact**: Very High
 - Eliminates #1 trust barrier for Garmin users
 - Significantly improves Garmin connection rate (current is likely low due to trust concerns)
 - Reduces liability (no longer handling Garmin passwords)
 - Aligns with industry standards (same as Strava, Apple, Google)
 - Builds foundation for future platform integrations
-
-**Estimated Effort**: 6-8 hours (after Garmin approval)
-- Garmin OAuth setup in developer portal: 1 hour
-- Update GarminAdapter to use OAuth flow: 2-3 hours
-- Create OAuth initiation endpoint (`/api/connect/garmin/route.ts`): 1 hour
-- Create OAuth callback handler (`/api/auth/callback/garmin/route.ts`): 1 hour
-- Remove GarminConnectModal password form: 30 minutes
-- Update dashboard connect button: 30 minutes
-- Replace `garmin-connect` package with official API calls: 1 hour
-- Testing and error handling: 1 hour
 
 **Files to Create**:
 - `/app/api/connect/garmin/route.ts` (OAuth initiation)
@@ -235,12 +217,7 @@ Last Updated: 2026-02-06
 - Platform-specific counts ("327 Garmin runners, 189 Strava runners")
 - Activity metrics ("12,847 personalized plans generated")
 
-**Estimated Impact**: Low-Medium (5-10% trust increase)
-
-**Estimated Effort**: 2 hours
-- Database query for counts: 30 minutes
-- Landing page integration: 1 hour
-- Caching strategy: 30 minutes
+**Expected Impact**: Low-Medium (5-10% trust increase)
 
 **Files to Modify**:
 - `/app/page.tsx`
@@ -273,12 +250,7 @@ Last Updated: 2026-02-06
 - Runner demographics: Age, running level, location
 - Rotating carousel on mobile
 
-**Estimated Impact**: Medium (15-20% trust increase)
-
-**Estimated Effort**: 4 hours
-- Testimonial component design: 2 hours
-- Landing page integration: 1 hour
-- Responsive layout: 1 hour
+**Expected Impact**: Medium (15-20% trust increase)
 
 **Files to Create**:
 - `/components/Testimonials.tsx`
@@ -321,13 +293,7 @@ Last Updated: 2026-02-06
 - Toggle: "Your Week 1" vs "Your Week 12" to show progression
 - Highlight adaptive elements: "Adjusted for last week's fatigue"
 
-**Estimated Impact**: Low (5-8% engagement increase)
-
-**Estimated Effort**: 4-6 hours
-- Multiple email templates: 2 hours
-- Tab/toggle UI: 2 hours
-- Smooth transitions: 1 hour
-- Analytics tracking: 1 hour
+**Expected Impact**: Low (5-8% engagement increase)
 
 **Files to Modify**:
 - `/app/page.tsx`
@@ -355,13 +321,7 @@ Last Updated: 2026-02-06
 - Track: CTR, signup rate, time on page
 - Minimum 1,000 visitors per variant for statistical significance
 
-**Estimated Impact**: Medium (Enables continuous optimization)
-
-**Estimated Effort**: 8-12 hours
-- Choose framework (Split.io vs custom): 1 hour
-- Integration: 4 hours
-- Admin dashboard for viewing results: 4 hours
-- Documentation: 1 hour
+**Expected Impact**: Medium (Enables continuous optimization)
 
 **Files to Create**:
 - `/lib/ab-testing.ts`
@@ -396,11 +356,7 @@ Last Updated: 2026-02-06
 2. Microsoft (enterprise users, cross-platform)
 3. Facebook (widespread but declining trust)
 
-**Estimated Impact**: Low (3-5% additional conversions)
-
-**Estimated Effort**: 2 hours per provider
-- Strava has running-specific benefits
-- Microsoft + Facebook follow same pattern as Google
+**Expected Impact**: Low (3-5% additional conversions)
 
 **Files to Modify**:
 - Same as Apple + Google OAuth implementation
@@ -432,14 +388,9 @@ Wednesday: Speed work   |  Wednesday: 6x400m @ 7:30 pace (based on your PR)
 ...                     |  ...
 ```
 
-**Estimated Impact**: Low-Medium (8-12% understanding increase)
+**Expected Impact**: Low-Medium (8-12% understanding increase)
 
-**Estimated Effort**: 3 hours
-- Comparison table design: 1.5 hours
-- Responsive layout: 1 hour
-- Copywriting: 30 minutes
-
-**Files to Modify**:
+**Files Modified**:
 - `/app/page.tsx`
 
 **Dependencies**: None
@@ -463,13 +414,7 @@ Wednesday: Speed work   |  Wednesday: 6x400m @ 7:30 pace (based on your PR)
 - Animated data flow diagram
 - Host on YouTube, embed on landing page
 
-**Estimated Impact**: Low (5-7% engagement for video-preferring users)
-
-**Estimated Effort**: 8-12 hours (production)
-- Script writing: 2 hours
-- Recording/animation: 4 hours
-- Editing: 3 hours
-- Hosting + embedding: 1 hour
+**Expected Impact**: Low (5-7% engagement for video-preferring users)
 
 **Files to Modify**:
 - `/app/page.tsx`
@@ -512,11 +457,7 @@ Wednesday: Speed work   |  Wednesday: 6x400m @ 7:30 pace (based on your PR)
 - "How often do plans get updated?"
 - "Can I pause my plan for vacation/injury?"
 
-**Estimated Impact**: Very Low (2-3% for specific edge cases)
-
-**Estimated Effort**: 1-2 hours per question
-- Copywriting: 30 minutes
-- Design integration: 30 minutes
+**Expected Impact**: Very Low (2-3% for specific edge cases)
 
 **Files to Modify**:
 - `/app/page.tsx`
@@ -563,19 +504,16 @@ Items that don't directly impact conversion but improve maintainability:
 ### Webpack Cache Warnings
 - **Issue**: "Serializing big strings (102kiB) impacts deserialization performance"
 - **Impact**: Dev server performance
-- **Effort**: 2-3 hours to investigate and fix
 - **Priority**: Low (doesn't affect production)
 
 ### Next.js Config Warning
 - **Issue**: `experimental.serverActions` deprecated config option
 - **Fix**: Remove from next.config.js
-- **Effort**: 5 minutes
 - **Priority**: Very Low (cosmetic warning only)
 
 ### TypeScript Types for Supabase
 - **Issue**: Some operations require `as any` casting
 - **Fix**: Regenerate Supabase types from schema
-- **Effort**: 30 minutes
 - **Priority**: Low (doesn't affect functionality)
 
 ---
