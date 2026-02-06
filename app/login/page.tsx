@@ -36,11 +36,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-primary flex items-center justify-center p-4">
-      <div className="card max-w-md w-full">
-        <div className="gradient-primary p-8 text-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border-2 border-purple-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 p-8 text-center">
           <h1 className="text-2xl font-bold text-white mb-2">Welcome Back</h1>
-          <p className="text-white/80">Sign in to your account</p>
+          <p className="text-white/90">Sign in to your account</p>
         </div>
 
         <form onSubmit={handleLogin} className="p-8 space-y-6">
@@ -87,14 +87,14 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white px-6 py-3 rounded-full font-semibold hover:from-orange-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
 
-          <p className="text-center text-gray-600">
+          <p className="text-center text-slate-700">
             Don't have an account?{' '}
-            <Link href="/signup" className="text-primary font-semibold hover:underline">
+            <Link href="/signup" className="text-orange-600 font-semibold hover:text-orange-700 hover:underline">
               Sign up
             </Link>
           </p>
