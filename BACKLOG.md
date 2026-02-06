@@ -2,7 +2,7 @@
 
 This file tracks ideas and features discussed but not yet implemented. Items are organized by priority tier and include context to help decide what to work on next.
 
-Last Updated: 2026-02-05
+Last Updated: 2026-02-06
 
 ---
 
@@ -60,9 +60,160 @@ Last Updated: 2026-02-05
 
 ---
 
+### 2. Migrate Garmin Authentication to OAuth 2.0
+
+**Status**: Applied for Garmin Developer Program access, waiting for approval
+
+**Description**: Replace current email/password authentication for Garmin Connect with official OAuth 2.0 flow. Users will authenticate directly on Garmin's website instead of entering credentials into RunPlan.
+
+**Why It Matters**:
+- **User feedback**: "It's not super trustworthy to type in my Garmin password into your site"
+- **Critical trust barrier**: Current password-based auth blocks signups
+- **Security best practice**: OAuth is industry standard, eliminates credential exposure
+- **Required for scale**: Garmin may restrict unofficial authentication methods
+- **Better user experience**: One-click connection vs manual credential entry
+- **Expected significant improvement** in Garmin connection completion rate
+
+**Current Problem**:
+- Using unofficial `garmin-connect` npm package that simulates browser login
+- Requires users to enter Garmin credentials directly into RunPlan (major red flag)
+- Even with security note explaining "we only store tokens," users rightfully hesitate
+- Creates unnecessary privacy concerns and liability
+
+**OAuth Solution**:
+- User clicks "Connect Garmin" → Redirects to Garmin's official login page
+- User authenticates on Garmin.com (never enters password on RunPlan)
+- User grants permission for specific data access
+- Garmin redirects back with OAuth code → Exchange for secure tokens
+- Same pattern as existing Strava integration (proven to work)
+
+**Prerequisites Completed**:
+- ✅ Privacy policy created and deployed (required for OAuth application)
+- ✅ Applied for Garmin Developer Program (waiting for approval)
+- ✅ Privacy policy includes OAuth disclosure language
+- ✅ Existing Strava OAuth implementation to use as reference
+
+**Context**:
+- User applied for Garmin Developer Program access on 2026-02-06
+- Privacy policy live at https://www.runplan.fun/privacy
+- Contact email: smangalick@gmail.com
+- Approval typically takes 2 business days
+- Business registration required (user has completed)
+
+**Estimated Impact**: Very High
+- Eliminates #1 trust barrier for Garmin users
+- Significantly improves Garmin connection rate (current is likely low due to trust concerns)
+- Reduces liability (no longer handling Garmin passwords)
+- Aligns with industry standards (same as Strava, Apple, Google)
+- Builds foundation for future platform integrations
+
+**Estimated Effort**: 6-8 hours (after Garmin approval)
+- Garmin OAuth setup in developer portal: 1 hour
+- Update GarminAdapter to use OAuth flow: 2-3 hours
+- Create OAuth initiation endpoint (`/api/connect/garmin/route.ts`): 1 hour
+- Create OAuth callback handler (`/api/auth/callback/garmin/route.ts`): 1 hour
+- Remove GarminConnectModal password form: 30 minutes
+- Update dashboard connect button: 30 minutes
+- Replace `garmin-connect` package with official API calls: 1 hour
+- Testing and error handling: 1 hour
+
+**Files to Create**:
+- `/app/api/connect/garmin/route.ts` (OAuth initiation)
+- `/app/api/auth/callback/garmin/route.ts` (OAuth callback handler)
+
+**Files to Modify**:
+- `/lib/platforms/garmin/client.ts` (replace with OAuth API calls)
+- `/lib/platforms/garmin/adapter.ts` (update connect method)
+- `/components/GarminConnectModal.tsx` (remove or replace with OAuth button)
+- `/app/dashboard/page.tsx` (update Garmin connection UI)
+- `/lib/logging.ts` (add OAuth flow logging)
+
+**Files to Delete**:
+- Remove or archive password-based authentication code
+- Consider keeping as fallback during transition period
+
+**Dependencies**:
+- ⏳ Garmin Developer Program approval (in progress)
+- Garmin OAuth 2.0 credentials (Client ID, Client Secret)
+- Redirect URI configuration in Garmin developer portal
+- Understanding of Garmin Health API and Activity API scopes
+
+**Implementation Approach**:
+1. **Phase 1: Parallel Implementation**
+   - Keep existing password auth working
+   - Add OAuth flow alongside
+   - Test OAuth thoroughly before removing password method
+
+2. **Phase 2: Migration**
+   - Update UI to prefer OAuth (make it primary option)
+   - Keep password auth as "Advanced" option temporarily
+   - Monitor OAuth success rate
+
+3. **Phase 3: Full Cutover**
+   - Remove password authentication completely
+   - Update all documentation
+   - Notify existing users to reconnect via OAuth
+
+**API Scopes Needed**:
+- `activity-api`: Access to activities, workouts, training data
+- `health-api`: Sleep, heart rate, HRV, stress, body battery, VO2 max
+- Read-only access (no write permissions needed)
+
+**Testing Requirements**:
+- Desktop: Chrome, Firefox, Safari
+- Mobile: iOS Safari, Android Chrome
+- Test scenarios:
+  - New user connecting Garmin for first time
+  - Existing user reconnecting
+  - User denies permission (error handling)
+  - Token expiration and refresh
+  - Multiple concurrent OAuth flows
+  - Session timeout during OAuth
+
+**Migration Plan for Existing Users**:
+- Email notification: "Security upgrade - please reconnect your Garmin"
+- Dashboard banner: "Action required: Reconnect Garmin with secure OAuth"
+- Grace period: 30 days before disconnecting old auth
+- One-click reconnect flow
+
+**Success Metrics**:
+- [ ] Garmin connection attempt → completion rate (target: 80%+)
+- [ ] OAuth error rate (target: <5%)
+- [ ] Time to connect (target: <30 seconds)
+- [ ] User feedback sentiment improvement
+- [ ] Support tickets related to Garmin auth (target: decrease by 50%)
+
+**Security Improvements**:
+- ✅ Never handle Garmin passwords
+- ✅ OAuth tokens encrypted with AES-256
+- ✅ Token refresh handled automatically
+- ✅ User can revoke access from Garmin account settings
+- ✅ Audit trail of OAuth events
+- ✅ Compliance with OAuth 2.0 PKCE specification
+
+**Reference Implementation**:
+- Study existing Strava OAuth in `/lib/platforms/strava/`
+- Garmin OAuth docs: https://developer.garmin.com/gc-developer-program/
+- OAuth 2.0 PKCE spec: https://developerportal.garmin.com/sites/default/files/OAuth2PKCE_1.pdf
+
+**Blockers**:
+- None (prerequisites completed, just waiting for Garmin approval)
+
+**Next Steps (When Approved)**:
+1. Receive Garmin Developer credentials
+2. Create OAuth application in Garmin developer portal
+3. Configure redirect URIs
+4. Implement OAuth flow (follow Strava pattern)
+5. Test thoroughly
+6. Deploy to production
+7. Monitor success metrics
+8. Notify existing users to reconnect
+
+---
+
 ## 🟡 Medium Priority - Quick Wins
 
-### 2. Exit Intent Modal
+### 3. Exit Intent Modal
 
 **Status**: Discussed as "Quick Win Still Available" in LANDING_PAGE_IMPROVEMENTS.md
 
@@ -105,7 +256,7 @@ Last Updated: 2026-02-05
 
 ---
 
-### 3. Social Proof Numbers
+### 4. Social Proof Numbers
 
 **Status**: User prefers not to show yet, but available when ready
 
@@ -144,7 +295,7 @@ Last Updated: 2026-02-05
 
 ---
 
-### 4. Testimonials Section
+### 5. Testimonials Section
 
 **Status**: Waiting for real user testimonials
 
@@ -192,7 +343,7 @@ Last Updated: 2026-02-05
 
 ## 🟢 Low Priority - Nice to Have
 
-### 5. Interactive Email Preview
+### 6. Interactive Email Preview
 
 **Status**: Current implementation is static; could be enhanced
 
@@ -228,7 +379,7 @@ Last Updated: 2026-02-05
 
 ---
 
-### 6. A/B Testing Framework
+### 7. A/B Testing Framework
 
 **Status**: Infrastructure for testing conversion optimizations
 
@@ -269,7 +420,7 @@ Last Updated: 2026-02-05
 
 ---
 
-### 7. Additional OAuth Providers
+### 8. Additional OAuth Providers
 
 **Status**: After Apple + Google are successful
 
@@ -303,7 +454,7 @@ Last Updated: 2026-02-05
 
 ---
 
-### 8. Sample Week Comparison
+### 9. Sample Week Comparison
 
 **Status**: Landing page enhancement idea
 
@@ -338,7 +489,7 @@ Wednesday: Speed work   |  Wednesday: 6x400m @ 7:30 pace (based on your PR)
 
 ---
 
-### 9. Video Demo
+### 10. Video Demo
 
 **Status**: Future content idea
 
@@ -374,7 +525,7 @@ Wednesday: Speed work   |  Wednesday: 6x400m @ 7:30 pace (based on your PR)
 
 ---
 
-### 10. FAQ Expansion
+### 11. FAQ Expansion
 
 **Status**: Current FAQ has 7 questions; could expand if needed
 
