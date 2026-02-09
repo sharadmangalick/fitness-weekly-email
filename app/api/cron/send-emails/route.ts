@@ -6,6 +6,7 @@ import { StravaAdapter } from '@/lib/platforms/strava/adapter'
 import { analyzeTrainingData } from '@/lib/training/analyzer'
 import { generateTrainingPlan } from '@/lib/training/planner'
 import { generateEmailHtml, generateEmailSubject } from '@/lib/training/emailer'
+import { calculateUpdatedBaseline } from '@/lib/training/mileage-calculator'
 import { Resend } from 'resend'
 import type { GarminTokens, StravaTokens, AllPlatformData } from '@/lib/platforms/interface'
 import type { TrainingConfig, UserProfile, PlatformConnection } from '@/lib/database.types'
@@ -141,25 +142,52 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Fetch data from platform
+        // Fetch data from platform (30 days for baseline calculation)
         console.log(`Fetching data from ${connection.platform}...`)
         let platformData: AllPlatformData
 
         if (connection.platform === 'garmin') {
           const tokens = decryptTokens<GarminTokens>(connection.tokens_encrypted, connection.iv)
           const adapter = new GarminAdapter()
-          platformData = await adapter.getAllData(tokens, 7)
+          platformData = await adapter.getAllData(tokens, 30)  // 30 days for rolling baseline
         } else {
           const tokens = decryptTokens<StravaTokens>(connection.tokens_encrypted, connection.iv)
           const adapter = new StravaAdapter()
-          platformData = await adapter.getAllData(tokens, 7)
+          platformData = await adapter.getAllData(tokens, 30)  // 30 days for rolling baseline
         }
         console.log(`Fetched platform data: ${platformData.activities.length} activities`)
+
+        // Calculate updated baseline from actual training history
+        const baselineUpdate = calculateUpdatedBaseline(platformData.activities, config.current_weekly_mileage)
+        console.log(`Baseline update for ${profile.email}:`, {
+          previous: baselineUpdate.previousBaseline,
+          new: baselineUpdate.newBaseline,
+          change: `${baselineUpdate.changePercent > 0 ? '+' : ''}${baselineUpdate.changePercent}%`,
+          reasoning: baselineUpdate.reasoning
+        })
+
+        // Update baseline in database if changed
+        if (baselineUpdate.newBaseline !== baselineUpdate.previousBaseline) {
+          const { error: updateError } = await (supabase as any)
+            .from('training_configs')
+            .update({ current_weekly_mileage: baselineUpdate.newBaseline })
+            .eq('user_id', profile.id)
+
+          if (updateError) {
+            console.error(`Failed to update baseline for ${profile.email}:`, updateError)
+            // Continue anyway - use new baseline for this plan generation
+          } else {
+            console.log(`✓ Updated baseline: ${baselineUpdate.previousBaseline} → ${baselineUpdate.newBaseline} mi/week`)
+          }
+
+          // Update config object with new baseline for plan generation
+          config.current_weekly_mileage = baselineUpdate.newBaseline
+        }
 
         // Analyze data
         const analysis = analyzeTrainingData(platformData)
 
-        // Generate training plan
+        // Generate training plan (with updated baseline)
         const plan = generateTrainingPlan(config, analysis)
 
         // Generate email
