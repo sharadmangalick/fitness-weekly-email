@@ -69,6 +69,9 @@ export default function HomePage() {
             <span className="text-xl font-bold text-slate-900">RunPlan</span>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/about" className="text-slate-700 hover:text-slate-900 transition-colors font-medium">
+              About
+            </Link>
             <Link href="/login" className="text-slate-700 hover:text-slate-900 transition-colors font-medium">
               Log In
             </Link>
@@ -795,8 +798,14 @@ export default function HomePage() {
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
               Your Data Stays Yours
             </h2>
-            <p className="text-slate-700 text-lg max-w-2xl mx-auto">
+            <p className="text-slate-700 text-lg max-w-2xl mx-auto mb-4">
               We take privacy seriously. Your running data is personal, and we treat it that way.
+            </p>
+            <p className="text-slate-600 text-sm">
+              Questions about privacy? Contact us at{' '}
+              <a href="mailto:privacy@runplan.fun" className="text-blue-600 hover:text-blue-700 font-medium">
+                privacy@runplan.fun
+              </a>
             </p>
           </div>
 
@@ -993,6 +1002,9 @@ export default function HomePage() {
               <span className="font-semibold text-slate-900">RunPlan</span>
             </div>
             <div className="flex gap-6 text-sm">
+              <Link href="/about" className="text-slate-600 hover:text-slate-900 transition-colors">
+                About
+              </Link>
               <Link href="/privacy" className="text-slate-600 hover:text-slate-900 transition-colors">
                 Privacy Policy
               </Link>
@@ -1000,6 +1012,17 @@ export default function HomePage() {
                 Support
               </Link>
             </div>
+          </div>
+          <div className="text-center md:text-left mb-3">
+            <p className="text-slate-600 text-sm">
+              <a href="mailto:support@runplan.fun" className="text-slate-600 hover:text-slate-900 transition-colors">
+                support@runplan.fun
+              </a>
+              {' '}<span className="text-slate-400">•</span>{' '}
+              <a href="mailto:privacy@runplan.fun" className="text-slate-600 hover:text-slate-900 transition-colors">
+                privacy@runplan.fun
+              </a>
+            </p>
           </div>
           <p className="text-slate-600 text-sm text-center md:text-left">
             © {new Date().getFullYear()} RunPlan. Run smarter, not harder.

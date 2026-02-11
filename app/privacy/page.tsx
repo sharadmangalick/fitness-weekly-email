@@ -452,7 +452,7 @@ export default function PrivacyPolicyPage() {
             </div>
 
             <p className="text-slate-700 leading-relaxed">
-              To exercise any of these rights, visit your account settings or contact us at <a href="mailto:smangalick@gmail.com" className="text-blue-600 hover:text-blue-700 font-medium">smangalick@gmail.com</a>. We will respond within 30 days.
+              To exercise any of these rights, visit your account settings or contact us at <a href="mailto:privacy@runplan.fun" className="text-blue-600 hover:text-blue-700 font-medium">privacy@runplan.fun</a>. We will respond within 30 days.
             </p>
           </section>
 
@@ -527,7 +527,7 @@ export default function PrivacyPolicyPage() {
               Children's Privacy
             </h2>
             <p className="text-slate-700 leading-relaxed">
-              RunPlan is not intended for use by individuals under the age of 18. We do not knowingly collect personal information from children. If we discover that we have inadvertently collected data from a child under 18, we will delete it immediately. If you believe we have collected information from a child, please contact us at <a href="mailto:smangalick@gmail.com" className="text-blue-600 hover:text-blue-700 font-medium">smangalick@gmail.com</a>.
+              RunPlan is not intended for use by individuals under the age of 18. We do not knowingly collect personal information from children. If we discover that we have inadvertently collected data from a child under 18, we will delete it immediately. If you believe we have collected information from a child, please contact us at <a href="mailto:privacy@runplan.fun" className="text-blue-600 hover:text-blue-700 font-medium">privacy@runplan.fun</a>.
             </p>
           </section>
 
@@ -544,14 +544,14 @@ export default function PrivacyPolicyPage() {
             <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-4">
               <h3 className="font-semibold text-slate-900 mb-2">🇪🇺 European Union (GDPR)</h3>
               <p className="text-slate-700 text-sm leading-relaxed">
-                RunPlan complies with GDPR requirements for EU residents. You have the right to access, correct, delete, port, and object to processing of your data. To exercise these rights, contact us at <a href="mailto:smangalick@gmail.com" className="text-blue-600 hover:text-blue-700 font-medium">smangalick@gmail.com</a>.
+                RunPlan complies with GDPR requirements for EU residents. You have the right to access, correct, delete, port, and object to processing of your data. To exercise these rights, contact us at <a href="mailto:privacy@runplan.fun" className="text-blue-600 hover:text-blue-700 font-medium">privacy@runplan.fun</a>.
               </p>
             </div>
 
             <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-6">
               <h3 className="font-semibold text-slate-900 mb-2">🇺🇸 California (CCPA)</h3>
               <p className="text-slate-700 text-sm leading-relaxed">
-                California residents have additional rights under the California Consumer Privacy Act (CCPA). You may request disclosure of what personal information we collect, sell (we don't), and share. You may also request deletion of your data. To exercise these rights, email <a href="mailto:smangalick@gmail.com" className="text-blue-600 hover:text-blue-700 font-medium">smangalick@gmail.com</a> with "CCPA Request" in the subject line.
+                California residents have additional rights under the California Consumer Privacy Act (CCPA). You may request disclosure of what personal information we collect, sell (we don't), and share. You may also request deletion of your data. To exercise these rights, email <a href="mailto:privacy@runplan.fun" className="text-blue-600 hover:text-blue-700 font-medium">privacy@runplan.fun</a> with "CCPA Request" in the subject line.
               </p>
             </div>
           </section>
@@ -596,8 +596,17 @@ export default function PrivacyPolicyPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                   <div>
-                    <div className="text-sm text-slate-600">Email</div>
-                    <a href="mailto:smangalick@gmail.com" className="text-blue-600 hover:text-blue-700 font-medium">smangalick@gmail.com</a>
+                    <div className="text-sm text-slate-600">Privacy Inquiries</div>
+                    <a href="mailto:privacy@runplan.fun" className="text-blue-600 hover:text-blue-700 font-medium">privacy@runplan.fun</a>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <div>
+                    <div className="text-sm text-slate-600">General Support</div>
+                    <a href="mailto:support@runplan.fun" className="text-blue-600 hover:text-blue-700 font-medium">support@runplan.fun</a>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -639,6 +648,9 @@ export default function PrivacyPolicyPage() {
           <div className="flex gap-6 text-sm">
             <Link href="/" className="text-slate-600 hover:text-slate-900 transition-colors">
               Home
+            </Link>
+            <Link href="/about" className="text-slate-600 hover:text-slate-900 transition-colors">
+              About
             </Link>
             <Link href="/privacy" className="text-slate-600 hover:text-slate-900 transition-colors">
               Privacy
