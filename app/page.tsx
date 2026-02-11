@@ -69,6 +69,9 @@ export default function HomePage() {
             <span className="text-xl font-bold text-slate-900">RunPlan</span>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/integrations" className="text-slate-700 hover:text-slate-900 transition-colors font-medium">
+              Integrations
+            </Link>
             <Link href="/about" className="text-slate-700 hover:text-slate-900 transition-colors font-medium">
               About
             </Link>
