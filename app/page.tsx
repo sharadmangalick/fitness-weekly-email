@@ -1005,8 +1005,11 @@ export default function HomePage() {
               <Link href="/about" className="text-slate-600 hover:text-slate-900 transition-colors">
                 About
               </Link>
+              <Link href="/terms" className="text-slate-600 hover:text-slate-900 transition-colors">
+                Terms
+              </Link>
               <Link href="/privacy" className="text-slate-600 hover:text-slate-900 transition-colors">
-                Privacy Policy
+                Privacy
               </Link>
               <Link href="/support" className="text-slate-600 hover:text-slate-900 transition-colors">
                 Support
