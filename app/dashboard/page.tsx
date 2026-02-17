@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import PlatformConnector from '@/components/PlatformConnector'
-import GarminConnectModal from '@/components/GarminConnectModal'
 import GoalWizard from '@/components/GoalWizard'
 import TrainingPlanView from '@/components/TrainingPlanView'
 import FullPlanOverview from '@/components/FullPlanOverview'
@@ -61,7 +60,6 @@ export default function DashboardPage() {
   const [connections, setConnections] = useState<Connection[]>([])
   const [config, setConfig] = useState<TrainingConfig | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showGarminModal, setShowGarminModal] = useState(false)
   const [showGoalWizard, setShowGoalWizard] = useState(false)
   const [currentPlan, setCurrentPlan] = useState<GeneratedPlanData | null>(null)
   const [planLoading, setPlanLoading] = useState(false)
@@ -702,12 +700,6 @@ export default function DashboardPage() {
       </main>
 
       {/* Modals */}
-      <GarminConnectModal
-        isOpen={showGarminModal}
-        onClose={() => setShowGarminModal(false)}
-        onSuccess={loadUserData}
-      />
-
       {showGoalWizard && (
         <GoalWizard
           initialConfig={config}
