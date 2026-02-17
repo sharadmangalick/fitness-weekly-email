@@ -43,14 +43,17 @@ interface GeneratedPlanData {
 const ERROR_MESSAGES: Record<string, string> = {
   strava_auth_failed: 'Failed to start Strava authorization. Please try again.',
   strava_denied: 'You declined to connect your Strava account.',
-  no_code: 'No authorization code received from Strava.',
+  garmin_auth_failed: 'Failed to start Garmin authorization. Please try again.',
+  garmin_denied: 'You declined to connect your Garmin account.',
+  no_code: 'No authorization code received.',
   invalid_state: 'Invalid or missing state parameter. Please try again.',
   state_expired: 'Authorization timed out. Please try connecting again.',
-  token_exchange_failed: 'Failed to complete authorization with Strava.',
+  token_exchange_failed: 'Failed to complete authorization.',
   encryption_failed: 'Failed to securely store your connection.',
   db_error: 'Failed to save your connection. Please try again.',
   verification_failed: 'Connection saved but could not be verified.',
   strava_callback_failed: 'Something went wrong. Please try again.',
+  garmin_callback_failed: 'Something went wrong. Please try again.',
 }
 
 export default function DashboardPage() {
@@ -85,10 +88,15 @@ export default function DashboardPage() {
   useEffect(() => {
     loadUserData()
 
-    // Track Strava connection success from OAuth callback
+    // Track platform connection success from OAuth callback
     const successParam = searchParams.get('success')
     if (successParam === 'strava_connected') {
       trackPlatformConnection('strava')
+      setConnectionError(null)
+      // Clean up URL
+      router.replace('/dashboard', { scroll: false })
+    } else if (successParam === 'garmin_connected') {
+      trackPlatformConnection('garmin')
       setConnectionError(null)
       // Clean up URL
       router.replace('/dashboard', { scroll: false })
@@ -235,6 +243,11 @@ export default function DashboardPage() {
   const handleStravaConnect = () => {
     // Redirect to Strava OAuth
     window.location.href = '/api/connect/strava'
+  }
+
+  const handleGarminConnect = () => {
+    // Redirect to Garmin OAuth
+    window.location.href = '/api/connect/garmin'
   }
 
   const handleDisconnect = async (platform: 'garmin' | 'strava') => {
@@ -443,7 +456,7 @@ export default function DashboardPage() {
               platform="garmin"
               connected={!!garminConnection}
               status={garminConnection?.status}
-              onConnect={() => setShowGarminModal(true)}
+              onConnect={handleGarminConnect}
               onDisconnect={() => handleDisconnect('garmin')}
             />
             <PlatformConnector
