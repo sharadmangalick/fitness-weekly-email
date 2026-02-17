@@ -75,7 +75,10 @@ export class GarminAdapter implements FitnessPlatform {
 
     // Legacy email/password flow (deprecated, for backwards compatibility)
     if (credentials.email && credentials.password) {
-      return this.connectViaEmailPassword(credentials)
+      return this.connectViaEmailPassword({
+        email: credentials.email,
+        password: credentials.password,
+      })
     }
 
     return {
