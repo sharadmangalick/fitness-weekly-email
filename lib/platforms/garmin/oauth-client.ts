@@ -20,27 +20,8 @@ const GARMIN_TOKEN_URL = process.env.GARMIN_TOKEN_URL || 'https://connectapi.gar
 const GARMIN_API_BASE_URL = process.env.GARMIN_API_BASE_URL || 'https://apis.garmin.com/wellness-api/rest'
 
 /**
- * Generate PKCE code verifier and challenge
- */
-function generatePKCE(): { verifier: string; challenge: string } {
-  // Generate random code verifier (43-128 characters)
-  const verifier = Buffer.from(
-    Array.from({ length: 64 }, () => Math.random().toString(36)[2]).join('')
-  ).toString('base64url').slice(0, 128)
-
-  // Create SHA256 hash of verifier for challenge
-  const crypto = require('crypto')
-  const challenge = crypto
-    .createHash('sha256')
-    .update(verifier)
-    .digest('base64url')
-
-  return { verifier, challenge }
-}
-
-/**
  * Generate the Garmin OAuth authorization URL
- * Returns both the URL and the code verifier (needed for token exchange)
+ * Garmin does not support PKCE — plain OAuth 2.0 only
  */
 export function getGarminAuthUrl(state?: string): { url: string; codeVerifier: string } {
   const clientId = process.env.GARMIN_CLIENT_ID
@@ -50,22 +31,16 @@ export function getGarminAuthUrl(state?: string): { url: string; codeVerifier: s
     throw new Error('GARMIN_CLIENT_ID and NEXT_PUBLIC_GARMIN_REDIRECT_URI must be set')
   }
 
-  // Generate PKCE parameters
-  const { verifier, challenge } = generatePKCE()
-
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    code_challenge: challenge,
-    code_challenge_method: 'S256',
-    // Note: Garmin grants permissions based on portal config, not scope parameter
     ...(state && { state }),
   })
 
   return {
     url: `${GARMIN_OAUTH_BASE_URL}?${params.toString()}`,
-    codeVerifier: verifier,
+    codeVerifier: '', // Garmin does not support PKCE
   }
 }
 
@@ -111,7 +86,6 @@ export async function exchangeCodeForTokens(
     },
     body: new URLSearchParams({
       code,
-      code_verifier: codeVerifier,
       redirect_uri: redirectUri!,
       grant_type: 'authorization_code',
     }),

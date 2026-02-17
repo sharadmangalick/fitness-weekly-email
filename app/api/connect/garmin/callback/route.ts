@@ -142,19 +142,8 @@ export async function GET(request: NextRequest) {
       status: 'success',
     })
 
-    // Extract code verifier for PKCE
-    const codeVerifier = stateData.code_verifier
-    if (!codeVerifier) {
-      logger.error('Missing code verifier in state')
-      await logger.record({
-        userId: user.id,
-        step: 'token_exchange',
-        status: 'failed',
-        errorCode: 'missing_verifier',
-        errorMessage: 'PKCE code verifier not found in state',
-      })
-      return NextResponse.redirect(new URL(`/dashboard?error=auth_state_error&flow=${flowId}`, request.url))
-    }
+    // Extract code verifier (empty string since Garmin does not support PKCE)
+    const codeVerifier = stateData.code_verifier ?? ''
 
     // Exchange code for tokens
     logger.info('Exchanging code for tokens')
