@@ -100,14 +100,16 @@ export async function exchangeCodeForTokens(
 
   const redirectUri = process.env.NEXT_PUBLIC_GARMIN_REDIRECT_URI
 
+  // Create Basic Auth header (standard OAuth 2.0 client authentication)
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+
   const response = await fetch(GARMIN_TOKEN_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${basicAuth}`,
     },
     body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
       code,
       code_verifier: codeVerifier,
       redirect_uri: redirectUri!,
@@ -167,14 +169,16 @@ export async function refreshAccessToken(
     throw new Error('GARMIN_CLIENT_ID and GARMIN_CLIENT_SECRET must be set')
   }
 
+  // Create Basic Auth header (standard OAuth 2.0 client authentication)
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+
   const response = await fetch(GARMIN_TOKEN_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${basicAuth}`,
     },
     body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
