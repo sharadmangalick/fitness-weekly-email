@@ -8,18 +8,6 @@
 export type PlatformName = 'garmin' | 'strava'
 
 // Token types
-export interface GarminTokens {
-  oauth1_token: {
-    oauth_token: string
-    oauth_token_secret: string
-  }
-  oauth2_token: {
-    access_token: string
-    refresh_token: string
-    expires_at: number
-  }
-}
-
 export interface GarminOAuthTokens {
   access_token: string
   refresh_token: string
@@ -35,7 +23,7 @@ export interface StravaTokens {
   athlete_id: number
 }
 
-export type PlatformTokens = GarminTokens | GarminOAuthTokens | StravaTokens
+export type PlatformTokens = GarminOAuthTokens | StravaTokens
 
 // Normalized data types (platform-agnostic)
 export type ActivityType = 'run' | 'bike' | 'swim' | 'walk' | 'hike' | 'other'

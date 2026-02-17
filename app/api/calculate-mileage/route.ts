@@ -5,7 +5,7 @@ import { decryptTokens } from '@/lib/encryption'
 import { GarminAdapter } from '@/lib/platforms/garmin/adapter'
 import { StravaAdapter } from '@/lib/platforms/strava/adapter'
 import { calculateWeeklyMileage } from '@/lib/training/mileage-calculator'
-import type { GarminTokens, StravaTokens } from '@/lib/platforms/interface'
+import type { GarminOAuthTokens, StravaTokens } from '@/lib/platforms/interface'
 
 interface CalculateMileageResponse {
   mileage: number | null
@@ -69,7 +69,7 @@ export async function GET() {
     let activities
     try {
       if (connection.platform === 'garmin') {
-        const tokens = decryptTokens<GarminTokens>(connection.tokens_encrypted, connection.iv)
+        const tokens = decryptTokens<GarminOAuthTokens>(connection.tokens_encrypted, connection.iv)
         const adapter = new GarminAdapter()
         const platformData = await adapter.getAllData(tokens, 28)
         activities = platformData.activities

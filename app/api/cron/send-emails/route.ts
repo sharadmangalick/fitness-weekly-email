@@ -8,7 +8,7 @@ import { generateTrainingPlan } from '@/lib/training/planner'
 import { generateEmailHtml, generateEmailSubject } from '@/lib/training/emailer'
 import { calculateUpdatedBaseline } from '@/lib/training/mileage-calculator'
 import { Resend } from 'resend'
-import type { GarminTokens, StravaTokens, AllPlatformData } from '@/lib/platforms/interface'
+import type { GarminOAuthTokens, StravaTokens, AllPlatformData } from '@/lib/platforms/interface'
 import type { TrainingConfig, UserProfile, PlatformConnection } from '@/lib/database.types'
 
 // Lazy initialize Resend to avoid build-time errors
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
         let platformData: AllPlatformData
 
         if (connection.platform === 'garmin') {
-          const tokens = decryptTokens<GarminTokens>(connection.tokens_encrypted, connection.iv)
+          const tokens = decryptTokens<GarminOAuthTokens>(connection.tokens_encrypted, connection.iv)
           const adapter = new GarminAdapter()
           platformData = await adapter.getAllData(tokens, 30)  // 30 days for rolling baseline
         } else {

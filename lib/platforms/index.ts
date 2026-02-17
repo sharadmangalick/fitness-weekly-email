@@ -8,7 +8,6 @@
 export * from './interface'
 
 // Garmin
-export { GarminClient } from './garmin/client'
 export { GarminAdapter, garminAdapter } from './garmin/adapter'
 
 // Strava

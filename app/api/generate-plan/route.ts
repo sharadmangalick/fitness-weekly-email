@@ -6,7 +6,7 @@ import { GarminAdapter } from '@/lib/platforms/garmin/adapter'
 import { StravaAdapter } from '@/lib/platforms/strava/adapter'
 import { analyzeTrainingData, AnalysisResults } from '@/lib/training/analyzer'
 import { generateTrainingPlan, TrainingPlan, calculateRecoveryAdjustment, getRecoveryConcerns } from '@/lib/training/planner'
-import type { GarminTokens, StravaTokens, AllPlatformData } from '@/lib/platforms/interface'
+import type { GarminOAuthTokens, StravaTokens, AllPlatformData } from '@/lib/platforms/interface'
 import type { TrainingConfig } from '@/lib/database.types'
 
 // Cache validity in days
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     let platformData: AllPlatformData
 
     if (connection.platform === 'garmin') {
-      const tokens = decryptTokens<GarminTokens>(connection.tokens_encrypted, connection.iv)
+      const tokens = decryptTokens<GarminOAuthTokens>(connection.tokens_encrypted, connection.iv)
       const adapter = new GarminAdapter()
       platformData = await adapter.getAllData(tokens, 28) // 28 days for better analysis
     } else {

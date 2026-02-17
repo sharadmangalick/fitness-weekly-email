@@ -10,7 +10,7 @@ import { generateTrainingPlan } from '@/lib/training/planner'
 import { generateFirstWeekEmailHtml, generateFirstWeekEmailSubject } from '@/lib/training/first-week-emailer'
 import { Resend } from 'resend'
 import type { Database, UserProfile, TrainingConfig, PlatformConnection } from '@/lib/database.types'
-import type { GarminTokens, StravaTokens } from '@/lib/platforms/interface'
+import type { GarminOAuthTokens, StravaTokens } from '@/lib/platforms/interface'
 
 // Lazy initialize Resend
 let resend: Resend | null = null
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     // Fetch platform data
     let platformData
     if (connection.platform === 'garmin') {
-      const tokens = decryptTokens<GarminTokens>(connection.tokens_encrypted, connection.iv)
+      const tokens = decryptTokens<GarminOAuthTokens>(connection.tokens_encrypted, connection.iv)
       const adapter = new GarminAdapter()
       platformData = await adapter.getAllData(tokens, 7)
     } else {
