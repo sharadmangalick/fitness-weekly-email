@@ -15,13 +15,24 @@ import type {
   GarminVO2MaxRaw,
 } from './client'
 
-const GARMIN_OAUTH_BASE_URL = process.env.GARMIN_OAUTH_BASE_URL || 'https://connect.garmin.com/oauthConfirm'
+const GARMIN_OAUTH_BASE_URL = process.env.GARMIN_OAUTH_BASE_URL || 'https://connect.garmin.com/oauth2Confirm'
 const GARMIN_TOKEN_URL = process.env.GARMIN_TOKEN_URL || 'https://connectapi.garmin.com/oauth-service/oauth/token'
 const GARMIN_API_BASE_URL = process.env.GARMIN_API_BASE_URL || 'https://apis.garmin.com/wellness-api/rest'
 
 /**
- * Generate the Garmin OAuth authorization URL
- * Garmin does not support PKCE — plain OAuth 2.0 only
+ * Generate a PKCE code verifier and challenge.
+ * Garmin OAuth 2.0 requires PKCE (S256).
+ */
+function generatePKCE(): { verifier: string; challenge: string } {
+  const crypto = require('crypto')
+  const verifier = crypto.randomBytes(32).toString('base64url')
+  const challenge = crypto.createHash('sha256').update(verifier).digest('base64url')
+  return { verifier, challenge }
+}
+
+/**
+ * Generate the Garmin OAuth 2.0 authorization URL with PKCE.
+ * Auth endpoint: https://connect.garmin.com/oauth2Confirm
  */
 export function getGarminAuthUrl(state?: string): { url: string; codeVerifier: string } {
   const clientId = process.env.GARMIN_CLIENT_ID
@@ -31,16 +42,20 @@ export function getGarminAuthUrl(state?: string): { url: string; codeVerifier: s
     throw new Error('GARMIN_CLIENT_ID and NEXT_PUBLIC_GARMIN_REDIRECT_URI must be set')
   }
 
+  const { verifier, challenge } = generatePKCE()
+
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
     ...(state && { state }),
   })
 
   return {
     url: `${GARMIN_OAUTH_BASE_URL}?${params.toString()}`,
-    codeVerifier: '', // Garmin does not support PKCE
+    codeVerifier: verifier,
   }
 }
 
@@ -86,6 +101,7 @@ export async function exchangeCodeForTokens(
     },
     body: new URLSearchParams({
       code,
+      code_verifier: codeVerifier,
       redirect_uri: redirectUri!,
       grant_type: 'authorization_code',
     }),
