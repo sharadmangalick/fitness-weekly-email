@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-server'
-import { decryptTokens } from '@/lib/encryption'
+import { decryptTokens, encryptTokens } from '@/lib/encryption'
 import { GarminAdapter } from '@/lib/platforms/garmin/adapter'
 import { StravaAdapter } from '@/lib/platforms/strava/adapter'
 import { analyzeTrainingData, AnalysisResults } from '@/lib/training/analyzer'
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     // Find the preferred platform connection
     const userProfile = profile as { preferred_platform?: string }
-    const platformConnections = connections as Array<{ platform: string; tokens_encrypted: string; iv: string }>
+    const platformConnections = connections as Array<{ id: string; platform: string; tokens_encrypted: string; iv: string }>
     const preferredPlatform = userProfile.preferred_platform || 'garmin'
     const connection = platformConnections.find(c => c.platform === preferredPlatform)
       || platformConnections[0]
@@ -125,8 +125,20 @@ export async function POST(request: NextRequest) {
     let platformData: AllPlatformData
 
     if (connection.platform === 'garmin') {
-      const tokens = decryptTokens<GarminOAuthTokens>(connection.tokens_encrypted, connection.iv)
+      let tokens = decryptTokens<GarminOAuthTokens>(connection.tokens_encrypted, connection.iv)
       const adapter = new GarminAdapter()
+      if (!adapter.isTokenValid(tokens)) {
+        const refreshResult = await adapter.refreshTokens(tokens)
+        if (refreshResult.success && refreshResult.tokens) {
+          tokens = refreshResult.tokens as GarminOAuthTokens
+          const encrypted = encryptTokens(tokens)
+          await (adminClient as any).from('platform_connections').update({
+            tokens_encrypted: encrypted.tokens_encrypted,
+            iv: encrypted.iv,
+            updated_at: new Date().toISOString(),
+          }).eq('id', connection.id)
+        }
+      }
       platformData = await adapter.getAllData(tokens, 28) // 28 days for better analysis
     } else {
       const tokens = decryptTokens<StravaTokens>(connection.tokens_encrypted, connection.iv)

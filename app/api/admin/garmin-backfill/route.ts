@@ -15,6 +15,7 @@ const BACKFILL_TYPES = [
   'stressDetails',
   'activities',
   'hrv',
+  'healthSnapshot',
 ]
 
 export async function POST(request: NextRequest) {

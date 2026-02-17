@@ -6,14 +6,14 @@
 export interface GarminActivityRaw {
   activityId: number
   activityName: string
-  activityType?: { typeKey?: string }
-  startTimeLocal: string
-  distance: number  // meters
-  duration: number  // seconds
-  averageHR?: number
-  maxHR?: number
+  activityType?: string                            // Health API returns plain string e.g. "RUNNING"
+  startTimeInSeconds: number                       // Unix timestamp
+  distanceInMeters?: number
+  durationInSeconds: number
+  averageHeartRateInBeatsPerMinute?: number
+  maxHeartRateInBeatsPerMinute?: number
   elevationGain?: number
-  calories?: number
+  activeKilocalories?: number
   averageRunningCadenceInStepsPerMinute?: number
   perceivedExertion?: number
   aerobicTrainingEffect?: number
@@ -21,16 +21,13 @@ export interface GarminActivityRaw {
 }
 
 export interface GarminSleepRaw {
-  dailySleepDTO?: {
-    sleepTimeSeconds?: number
-    deepSleepSeconds?: number
-    lightSleepSeconds?: number
-    remSleepSeconds?: number
-    awakeSleepSeconds?: number
-    sleepScores?: {
-      totalScore?: number
-    }
-  }
+  calendarDate?: string
+  durationInSeconds?: number
+  deepSleepDurationInSeconds?: number
+  lightSleepDurationInSeconds?: number
+  remSleepInSeconds?: number
+  awakeDurationInSeconds?: number
+  sleepScores?: { overall?: { value?: number } }
 }
 
 export interface GarminHeartRateRaw {
@@ -40,13 +37,13 @@ export interface GarminHeartRateRaw {
 }
 
 export interface GarminDailyStatsRaw {
-  totalSteps?: number
-  totalDistanceMeters?: number
+  calendarDate?: string
+  steps?: number
+  distanceInMeters?: number
   activeKilocalories?: number
-  totalKilocalories?: number
-  sedentarySeconds?: number
-  activeSeconds?: number
-  vigorousIntensityMinutes?: number
+  bmrKilocalories?: number
+  activeTimeInSeconds?: number
+  vigorousIntensityDurationInSeconds?: number
   averageStressLevel?: number
   bodyBatteryHighestValue?: number
   bodyBatteryLowestValue?: number

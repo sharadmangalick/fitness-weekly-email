@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { createAdminClient } from '@/lib/supabase-server'
-import { decryptTokens } from '@/lib/encryption'
+import { decryptTokens, encryptTokens } from '@/lib/encryption'
 import { GarminAdapter } from '@/lib/platforms/garmin/adapter'
 import { StravaAdapter } from '@/lib/platforms/strava/adapter'
 import { analyzeTrainingData } from '@/lib/training/analyzer'
@@ -89,8 +89,20 @@ export async function POST(request: NextRequest) {
     // Fetch platform data
     let platformData
     if (connection.platform === 'garmin') {
-      const tokens = decryptTokens<GarminOAuthTokens>(connection.tokens_encrypted, connection.iv)
+      let tokens = decryptTokens<GarminOAuthTokens>(connection.tokens_encrypted, connection.iv)
       const adapter = new GarminAdapter()
+      if (!adapter.isTokenValid(tokens)) {
+        const refreshResult = await adapter.refreshTokens(tokens)
+        if (refreshResult.success && refreshResult.tokens) {
+          tokens = refreshResult.tokens as GarminOAuthTokens
+          const encrypted = encryptTokens(tokens)
+          await (adminClient as any).from('platform_connections').update({
+            tokens_encrypted: encrypted.tokens_encrypted,
+            iv: encrypted.iv,
+            updated_at: new Date().toISOString(),
+          }).eq('id', connection.id)
+        }
+      }
       platformData = await adapter.getAllData(tokens, 7)
     } else {
       const tokens = decryptTokens<StravaTokens>(connection.tokens_encrypted, connection.iv)

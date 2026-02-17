@@ -260,7 +260,8 @@ export class GarminOAuthClient {
   }
 
   /**
-   * Get date range for queries (YYYY-MM-DD format)
+   * Get date range for queries (YYYY-MM-DD format).
+   * Used by endpoints that require date string params (heartRates, bodyBattery).
    */
   private getDateRange(days: number): { startDate: string; endDate: string } {
     const end = new Date()
@@ -276,23 +277,31 @@ export class GarminOAuthClient {
   }
 
   /**
-   * Fetch activities for the specified number of days
+   * Get Unix timestamp range for queries.
+   * Used by most Health API pull endpoints (activities, sleeps, dailies, stressDetails).
+   */
+  private getUnixTimeRange(days: number): { start: number; end: number } {
+    const end = Math.floor(Date.now() / 1000)
+    const start = end - days * 86400
+    return { start, end }
+  }
+
+  /**
+   * Fetch activities for the specified number of days.
    *
    * Garmin Health API endpoint: /activities
-   * Returns running activities with distance, duration, HR, etc.
+   * Uses uploadStartTimeInSeconds / uploadEndTimeInSeconds params.
+   * Returns all activity types — filter for RUNNING in the adapter.
    */
   async getActivities(days: number): Promise<GarminActivityRaw[]> {
-    const { startDate, endDate } = this.getDateRange(days)
+    const { start, end } = this.getUnixTimeRange(days)
 
     try {
-      // Garmin Health API activities endpoint
-      // Note: Actual endpoint may vary based on Garmin's API documentation
-      // This is a placeholder structure - adjust based on official docs
-      const response = await this.request<GarminActivityRaw[]>(
-        `/activities?startDate=${startDate}&endDate=${endDate}&activityType=running`
+      const response = await this.request<any>(
+        `/activities?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
       )
 
-      return response || []
+      return response?.activities || []
     } catch (error) {
       log('error', 'Failed to fetch Garmin activities', { error, days })
       return []
@@ -300,28 +309,24 @@ export class GarminOAuthClient {
   }
 
   /**
-   * Fetch sleep data for the specified number of days
+   * Fetch sleep data for the specified number of days.
    *
-   * Garmin Health API endpoint: /sleep
+   * Garmin Health API endpoint: /sleeps
+   * Uses uploadStartTimeInSeconds / uploadEndTimeInSeconds params.
    */
   async getSleepData(days: number): Promise<{ date: string; data: GarminSleepRaw }[]> {
-    const { startDate, endDate } = this.getDateRange(days)
+    const { start, end } = this.getUnixTimeRange(days)
 
     try {
       const response = await this.request<any>(
-        `/sleep?startDate=${startDate}&endDate=${endDate}`
+        `/sleeps?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
       )
 
-      // Transform response to match expected format
-      // Adjust based on actual Garmin API response structure
-      if (Array.isArray(response)) {
-        return response.map(item => ({
-          date: item.calendarDate || item.date,
-          data: item
-        }))
-      }
-
-      return []
+      const items: GarminSleepRaw[] = response?.sleeps || []
+      return items.map(item => ({
+        date: item.calendarDate || '',
+        data: item,
+      }))
     } catch (error) {
       log('error', 'Failed to fetch Garmin sleep data', { error, days })
       return []
@@ -329,26 +334,24 @@ export class GarminOAuthClient {
   }
 
   /**
-   * Fetch daily summaries for the specified number of days
+   * Fetch daily summaries for the specified number of days.
    *
    * Garmin Health API endpoint: /dailies
+   * Uses uploadStartTimeInSeconds / uploadEndTimeInSeconds params.
    */
   async getDailySummaries(days: number): Promise<{ date: string; data: GarminDailyStatsRaw }[]> {
-    const { startDate, endDate } = this.getDateRange(days)
+    const { start, end } = this.getUnixTimeRange(days)
 
     try {
       const response = await this.request<any>(
-        `/dailies?startDate=${startDate}&endDate=${endDate}`
+        `/dailies?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
       )
 
-      if (Array.isArray(response)) {
-        return response.map(item => ({
-          date: item.calendarDate || item.date,
-          data: item
-        }))
-      }
-
-      return []
+      const items: GarminDailyStatsRaw[] = response?.dailies || []
+      return items.map(item => ({
+        date: item.calendarDate || '',
+        data: item,
+      }))
     } catch (error) {
       log('error', 'Failed to fetch Garmin daily summaries', { error, days })
       return []
@@ -356,9 +359,10 @@ export class GarminOAuthClient {
   }
 
   /**
-   * Fetch heart rate data for the specified number of days
+   * Fetch heart rate data for the specified number of days.
    *
    * Garmin Health API endpoint: /heartRates
+   * Uses date string params (this endpoint does not support unix timestamps).
    */
   async getHeartRateData(days: number): Promise<{ date: string; data: GarminHeartRateRaw }[]> {
     const { startDate, endDate } = this.getDateRange(days)
@@ -368,14 +372,11 @@ export class GarminOAuthClient {
         `/heartRates?startDate=${startDate}&endDate=${endDate}`
       )
 
-      if (Array.isArray(response)) {
-        return response.map(item => ({
-          date: item.calendarDate || item.date,
-          data: item
-        }))
-      }
-
-      return []
+      const items: GarminHeartRateRaw[] = response?.heartRates || []
+      return items.map(item => ({
+        date: item.calendarDate || '',
+        data: item,
+      }))
     } catch (error) {
       log('error', 'Failed to fetch Garmin heart rate data', { error, days })
       return []
@@ -383,19 +384,20 @@ export class GarminOAuthClient {
   }
 
   /**
-   * Fetch stress data for the specified number of days
+   * Fetch stress data for the specified number of days.
    *
-   * Garmin Health API endpoint: /stress
+   * Garmin Health API endpoint: /stressDetails
+   * Uses uploadStartTimeInSeconds / uploadEndTimeInSeconds params.
    */
   async getStressData(days: number): Promise<any[]> {
-    const { startDate, endDate } = this.getDateRange(days)
+    const { start, end } = this.getUnixTimeRange(days)
 
     try {
       const response = await this.request<any>(
-        `/stress?startDate=${startDate}&endDate=${endDate}`
+        `/stressDetails?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
       )
 
-      return Array.isArray(response) ? response : []
+      return response?.stressDetails || []
     } catch (error) {
       log('error', 'Failed to fetch Garmin stress data', { error, days })
       return []
@@ -403,9 +405,10 @@ export class GarminOAuthClient {
   }
 
   /**
-   * Fetch body battery data for the specified number of days
+   * Fetch body battery data for the specified number of days.
    *
    * Garmin Health API endpoint: /bodyBattery
+   * Uses date string params.
    */
   async getBodyBattery(days: number): Promise<any[]> {
     const { startDate, endDate } = this.getDateRange(days)
@@ -415,7 +418,9 @@ export class GarminOAuthClient {
         `/bodyBattery?startDate=${startDate}&endDate=${endDate}`
       )
 
-      return Array.isArray(response) ? response : []
+      // Response may be a wrapped object or bare array depending on API version
+      if (Array.isArray(response)) return response
+      return response?.bodyBatteryReadings || response?.bodyBattery || []
     } catch (error) {
       log('error', 'Failed to fetch Garmin body battery data', { error, days })
       return []

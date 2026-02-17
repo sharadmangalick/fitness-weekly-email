@@ -234,6 +234,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ── Health Snapshots ─────────────────────────────────────────────────────
+    if (Array.isArray(payload.healthSnapshot)) {
+      for (const snapshot of payload.healthSnapshot) {
+        try {
+          const connection = await findConnection()
+          if (connection) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase as any)
+              .from('garmin_webhook_deliveries')
+              .insert({
+                user_id: connection.user_id,
+                webhook_type: 'health_snapshot',
+                garmin_user_id: snapshot.userId,
+                payload: snapshot,
+                processed: false
+              })
+            log('info', 'Health snapshot stored', { garminUserId: snapshot.userId })
+          }
+        } catch (err) {
+          log('error', 'Error processing health snapshot', { error: err })
+        }
+      }
+    }
+
     // ── Heart Rate Epochs ────────────────────────────────────────────────────
     if (Array.isArray(payload.epochs)) {
       for (const epoch of payload.epochs) {

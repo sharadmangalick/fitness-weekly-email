@@ -96,21 +96,21 @@ export class GarminAdapter implements FitnessPlatform {
   // ── Normalization helpers ────────────────────────────────────────────────
 
   private normalizeActivity(raw: GarminActivityRaw): Activity {
-    const distanceMiles = metersToMiles(raw.distance || 0)
-    const durationMinutes = secondsToMinutes(raw.duration || 0)
+    const distanceMiles = metersToMiles(raw.distanceInMeters || 0)
+    const durationMinutes = secondsToMinutes(raw.durationInSeconds || 0)
 
     return {
       id: raw.activityId.toString(),
-      date: new Date(raw.startTimeLocal),
-      type: normalizeActivityType(raw.activityType?.typeKey || 'other'),
+      date: new Date(raw.startTimeInSeconds * 1000),
+      type: normalizeActivityType(raw.activityType?.toLowerCase() || 'other'),
       name: raw.activityName || 'Activity',
       distance_miles: Math.round(distanceMiles * 100) / 100,
       duration_minutes: Math.round(durationMinutes * 10) / 10,
       avg_pace_per_mile: formatPace(durationMinutes, distanceMiles),
-      avg_hr: raw.averageHR,
-      max_hr: raw.maxHR,
+      avg_hr: raw.averageHeartRateInBeatsPerMinute,
+      max_hr: raw.maxHeartRateInBeatsPerMinute,
       elevation_gain_ft: raw.elevationGain ? Math.round(raw.elevationGain * 3.28084) : undefined,
-      calories: raw.calories,
+      calories: raw.activeKilocalories,
       avg_cadence: raw.averageRunningCadenceInStepsPerMinute,
       perceived_exertion: raw.perceivedExertion,
       aerobic_training_effect: raw.aerobicTrainingEffect,
@@ -119,17 +119,16 @@ export class GarminAdapter implements FitnessPlatform {
   }
 
   private normalizeSleep(date: string, raw: GarminSleepRaw): SleepData | null {
-    const dto = raw.dailySleepDTO
-    if (!dto || !dto.sleepTimeSeconds) return null
+    if (!raw.durationInSeconds) return null
 
     return {
       date,
-      total_sleep_hours: (dto.sleepTimeSeconds || 0) / 3600,
-      deep_sleep_hours: (dto.deepSleepSeconds || 0) / 3600,
-      light_sleep_hours: (dto.lightSleepSeconds || 0) / 3600,
-      rem_sleep_hours: (dto.remSleepSeconds || 0) / 3600,
-      awake_hours: (dto.awakeSleepSeconds || 0) / 3600,
-      sleep_score: dto.sleepScores?.totalScore,
+      total_sleep_hours: (raw.durationInSeconds || 0) / 3600,
+      deep_sleep_hours: (raw.deepSleepDurationInSeconds || 0) / 3600,
+      light_sleep_hours: (raw.lightSleepDurationInSeconds || 0) / 3600,
+      rem_sleep_hours: (raw.remSleepInSeconds || 0) / 3600,
+      awake_hours: (raw.awakeDurationInSeconds || 0) / 3600,
+      sleep_score: raw.sleepScores?.overall?.value,
     }
   }
 
@@ -145,15 +144,17 @@ export class GarminAdapter implements FitnessPlatform {
   private normalizeDailySummary(date: string, raw: GarminDailyStatsRaw): DailySummary {
     return {
       date,
-      steps: raw.totalSteps || 0,
-      total_distance_miles: raw.totalDistanceMeters
-        ? metersToMiles(raw.totalDistanceMeters)
+      steps: raw.steps || 0,
+      total_distance_miles: raw.distanceInMeters
+        ? metersToMiles(raw.distanceInMeters)
         : undefined,
       active_calories: raw.activeKilocalories,
-      total_calories: raw.totalKilocalories,
-      sedentary_minutes: raw.sedentarySeconds ? Math.round(raw.sedentarySeconds / 60) : undefined,
-      active_minutes: raw.activeSeconds ? Math.round(raw.activeSeconds / 60) : undefined,
-      vigorous_minutes: raw.vigorousIntensityMinutes,
+      total_calories: raw.bmrKilocalories,
+      sedentary_minutes: undefined,
+      active_minutes: raw.activeTimeInSeconds ? Math.round(raw.activeTimeInSeconds / 60) : undefined,
+      vigorous_minutes: raw.vigorousIntensityDurationInSeconds
+        ? Math.round(raw.vigorousIntensityDurationInSeconds / 60)
+        : undefined,
       stress_level: raw.averageStressLevel,
       body_battery_high: raw.bodyBatteryHighestValue,
       body_battery_low: raw.bodyBatteryLowestValue,
@@ -186,7 +187,9 @@ export class GarminAdapter implements FitnessPlatform {
   async getActivities(tokens: PlatformTokens, days: number): Promise<Activity[]> {
     await this.ensureAuthenticated(tokens)
     const raw = await this.oauthClient!.getActivities(days)
-    return raw.map((r) => this.normalizeActivity(r))
+    return raw
+      .filter(r => r.activityType?.toUpperCase() === 'RUNNING')
+      .map((r) => this.normalizeActivity(r))
   }
 
   async getSleepData(tokens: PlatformTokens, days: number): Promise<SleepData[]> {
@@ -216,7 +219,9 @@ export class GarminAdapter implements FitnessPlatform {
     const raw = await this.oauthClient!.fetchAll(days)
 
     return {
-      activities: raw.activities.map((r) => this.normalizeActivity(r)),
+      activities: raw.activities
+        .filter(r => r.activityType?.toUpperCase() === 'RUNNING')
+        .map((r) => this.normalizeActivity(r)),
       sleep: raw.sleep
         .map(({ date, data }) => this.normalizeSleep(date, data))
         .filter((s): s is SleepData => s !== null),

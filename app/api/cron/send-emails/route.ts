@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
-import { decryptTokens } from '@/lib/encryption'
+import { decryptTokens, encryptTokens } from '@/lib/encryption'
 import { GarminAdapter } from '@/lib/platforms/garmin/adapter'
 import { StravaAdapter } from '@/lib/platforms/strava/adapter'
 import { analyzeTrainingData } from '@/lib/training/analyzer'
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     const userIds = configsWithProfiles.map((c: any) => c.user_id)
     const { data: allConnections, error: connError } = await supabase
       .from('platform_connections')
-      .select('user_id, platform, tokens_encrypted, iv, status')
+      .select('id, user_id, platform, tokens_encrypted, iv, status')
       .in('user_id', userIds)
       .eq('status', 'active') as { data: any[] | null; error: any }
 
@@ -147,8 +147,20 @@ export async function POST(request: NextRequest) {
         let platformData: AllPlatformData
 
         if (connection.platform === 'garmin') {
-          const tokens = decryptTokens<GarminOAuthTokens>(connection.tokens_encrypted, connection.iv)
+          let tokens = decryptTokens<GarminOAuthTokens>(connection.tokens_encrypted, connection.iv)
           const adapter = new GarminAdapter()
+          if (!adapter.isTokenValid(tokens)) {
+            const refreshResult = await adapter.refreshTokens(tokens)
+            if (refreshResult.success && refreshResult.tokens) {
+              tokens = refreshResult.tokens as GarminOAuthTokens
+              const encrypted = encryptTokens(tokens)
+              await (supabase as any).from('platform_connections').update({
+                tokens_encrypted: encrypted.tokens_encrypted,
+                iv: encrypted.iv,
+                updated_at: new Date().toISOString(),
+              }).eq('id', connection.id)
+            }
+          }
           platformData = await adapter.getAllData(tokens, 30)  // 30 days for rolling baseline
         } else {
           const tokens = decryptTokens<StravaTokens>(connection.tokens_encrypted, connection.iv)
