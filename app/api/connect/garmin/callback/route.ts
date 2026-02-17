@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL(`/dashboard?error=invalid_state&flow=${flowId}`, request.url))
     }
 
-    let stateData: { user_id: string; timestamp: number; flow_id?: string }
+    let stateData: { user_id: string; timestamp: number; flow_id?: string; code_verifier?: string }
     try {
       stateData = JSON.parse(Buffer.from(state, 'base64').toString())
       // If state contains flowId, use it for consistent tracing
@@ -142,6 +142,20 @@ export async function GET(request: NextRequest) {
       status: 'success',
     })
 
+    // Extract code verifier for PKCE
+    const codeVerifier = stateData.code_verifier
+    if (!codeVerifier) {
+      logger.error('Missing code verifier in state')
+      await logger.record({
+        userId: user.id,
+        step: 'token_exchange',
+        status: 'failed',
+        errorCode: 'missing_verifier',
+        errorMessage: 'PKCE code verifier not found in state',
+      })
+      return NextResponse.redirect(new URL(`/dashboard?error=auth_state_error&flow=${flowId}`, request.url))
+    }
+
     // Exchange code for tokens
     logger.info('Exchanging code for tokens')
     await logger.record({
@@ -152,7 +166,7 @@ export async function GET(request: NextRequest) {
 
     let tokens
     try {
-      tokens = await exchangeCodeForTokens(code, flowId)
+      tokens = await exchangeCodeForTokens(code, codeVerifier, flowId)
       logger.info('Token exchange successful', {
         userId: user.id.substring(0, 8) + '...',
         hasAccessToken: !!tokens.access_token,

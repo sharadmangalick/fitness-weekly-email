@@ -30,12 +30,19 @@ export async function GET(request: NextRequest) {
       userId: user.id.substring(0, 8) + '...',
     })
 
-    // Generate state token (CSRF protection)
+    // Generate OAuth URL with PKCE
+    const { url: authUrl, codeVerifier } = getGarminAuthUrl()
+
+    // Generate state token (CSRF protection) with code verifier
     const state = Buffer.from(JSON.stringify({
       user_id: user.id,
       timestamp: Date.now(),
       flow_id: flowId,
+      code_verifier: codeVerifier, // Store PKCE verifier for token exchange
     })).toString('base64')
+
+    // Add state to auth URL
+    const authUrlWithState = `${authUrl}&state=${encodeURIComponent(state)}`
 
     // Log initiation
     await logger.record({
@@ -45,11 +52,9 @@ export async function GET(request: NextRequest) {
       metadata: { flowId },
     })
 
-    // Redirect to Garmin OAuth
-    const authUrl = getGarminAuthUrl(state)
-    logger.info('Redirecting to Garmin OAuth', { authUrl: authUrl.substring(0, 50) + '...' })
+    logger.info('Redirecting to Garmin OAuth', { authUrl: authUrlWithState.substring(0, 50) + '...' })
 
-    return NextResponse.redirect(authUrl)
+    return NextResponse.redirect(authUrlWithState)
 
   } catch (error) {
     logger.error('OAuth initiation failed', { error })
