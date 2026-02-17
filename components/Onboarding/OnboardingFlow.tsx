@@ -5,7 +5,6 @@ import OnboardingStep from './OnboardingStep'
 import StepConnectPlatform from './StepConnectPlatform'
 import StepSetGoals from './StepSetGoals'
 import StepPlanPreview from './StepPlanPreview'
-import GarminConnectModal from '@/components/GarminConnectModal'
 import {
   trackOnboardingStarted,
   trackOnboardingPlatformConnected,
@@ -50,7 +49,6 @@ export default function OnboardingFlow({
   onConnectionsChange,
   onConfigChange,
 }: OnboardingFlowProps) {
-  const [showGarminModal, setShowGarminModal] = useState(false)
   const [completing, setCompleting] = useState(false)
 
   // Determine current step based on actual state
@@ -74,7 +72,7 @@ export default function OnboardingFlow({
   }, [initialStatus])
 
   const handleGarminConnect = () => {
-    setShowGarminModal(true)
+    window.location.href = '/api/connect/garmin'
   }
 
   const handleStravaConnect = () => {
@@ -210,12 +208,6 @@ export default function OnboardingFlow({
         </div>
       </div>
 
-      {/* Garmin Modal */}
-      <GarminConnectModal
-        isOpen={showGarminModal}
-        onClose={() => setShowGarminModal(false)}
-        onSuccess={handleGarminSuccess}
-      />
     </>
   )
 }
