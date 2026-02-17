@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
       logger.error('Failed to get user session', { error: userError })
       await logger.record({
         userId: stateData.user_id,
-        step: 'session_verification',
+        step: 'state_validation',
         status: 'failed',
         errorCode: 'no_session',
         errorMessage: userError?.message || 'No user session',
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
       })
       await logger.record({
         userId: stateData.user_id,
-        step: 'session_verification',
+        step: 'state_validation',
         status: 'failed',
         errorCode: 'user_mismatch',
         errorMessage: 'Logged in user does not match state user',
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
     logger.info('Session verified', { userId: user.id.substring(0, 8) + '...' })
     await logger.record({
       userId: user.id,
-      step: 'session_verification',
+      step: 'state_validation',
       status: 'success',
     })
 
@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
     logger.info('Storing connection in database')
     await logger.record({
       userId: user.id,
-      step: 'database_write',
+      step: 'db_storage',
       status: 'started',
     })
 
@@ -241,7 +241,7 @@ export async function GET(request: NextRequest) {
       logger.error('Database write failed', { error: dbError })
       await logger.record({
         userId: user.id,
-        step: 'database_write',
+        step: 'db_storage',
         status: 'failed',
         errorCode: 'db_error',
         errorMessage: dbError.message,
@@ -252,7 +252,7 @@ export async function GET(request: NextRequest) {
     logger.info('Connection stored successfully')
     await logger.record({
       userId: user.id,
-      step: 'database_write',
+      step: 'db_storage',
       status: 'success',
     })
 
@@ -282,7 +282,7 @@ export async function GET(request: NextRequest) {
     logger.info('OAuth flow completed successfully')
     await logger.record({
       userId: user.id,
-      step: 'completion',
+      step: 'completed',
       status: 'success',
     })
 
@@ -291,7 +291,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     logger.error('Unexpected error in callback', { error })
     await logger.record({
-      step: 'callback',
+      step: 'callback_received',
       status: 'failed',
       errorCode: 'unhandled_exception',
       errorMessage: error instanceof Error ? error.message : 'Unknown error',
