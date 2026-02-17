@@ -6,6 +6,7 @@
  */
 
 import { log, maskSensitive } from '@/lib/logging'
+import type { GarminOAuthTokens } from '../interface'
 import type {
   GarminActivityRaw,
   GarminSleepRaw,
@@ -17,14 +18,6 @@ import type {
 const GARMIN_OAUTH_BASE_URL = process.env.GARMIN_OAUTH_BASE_URL || 'https://connect.garmin.com/oauthConfirm'
 const GARMIN_TOKEN_URL = process.env.GARMIN_TOKEN_URL || 'https://connect.garmin.com/oauth-service/oauth/token'
 const GARMIN_API_BASE_URL = process.env.GARMIN_API_BASE_URL || 'https://apis.garmin.com/wellness-api/rest'
-
-export interface GarminOAuthTokens {
-  access_token: string
-  refresh_token: string
-  expires_at: number  // Unix timestamp (seconds)
-  user_id: string     // Garmin user ID
-  token_type: string  // "Bearer"
-}
 
 /**
  * Generate the Garmin OAuth authorization URL

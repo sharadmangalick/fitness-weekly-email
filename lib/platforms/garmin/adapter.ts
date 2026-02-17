@@ -6,6 +6,7 @@ import {
   FitnessPlatform,
   PlatformName,
   GarminTokens,
+  GarminOAuthTokens,
   PlatformTokens,
   ConnectResult,
   RefreshResult,
@@ -30,7 +31,6 @@ import {
 } from './client'
 import {
   GarminOAuthClient,
-  GarminOAuthTokens,
   refreshAccessToken,
 } from './oauth-client'
 
