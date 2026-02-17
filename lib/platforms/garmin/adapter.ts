@@ -28,19 +28,82 @@ import {
   GarminDailyStatsRaw,
   GarminVO2MaxRaw,
 } from './client'
+import {
+  GarminOAuthClient,
+  GarminOAuthTokens,
+  refreshAccessToken,
+} from './oauth-client'
 
 export class GarminAdapter implements FitnessPlatform {
   readonly name: PlatformName = 'garmin'
   private client: GarminClient
+  private oauthClient: GarminOAuthClient | null = null
 
   constructor() {
     this.client = new GarminClient()
   }
 
   /**
-   * Connect to Garmin using email/password
+   * Type guard to check if tokens are OAuth tokens (new) vs legacy tokens
+   */
+  private isOAuthTokens(tokens: PlatformTokens): tokens is GarminOAuthTokens {
+    // OAuth tokens have user_id and token_type fields
+    return (
+      'user_id' in tokens &&
+      'token_type' in tokens &&
+      'access_token' in tokens &&
+      !('oauth1_token' in tokens)
+    )
+  }
+
+  /**
+   * Type guard for legacy Garmin tokens
+   */
+  private isLegacyTokens(tokens: PlatformTokens): tokens is GarminTokens {
+    return 'oauth1_token' in tokens && 'oauth2_token' in tokens
+  }
+
+  /**
+   * Connect to Garmin
+   * Supports both OAuth (via code) and legacy email/password
    */
   async connect(credentials: Record<string, string>): Promise<ConnectResult> {
+    // OAuth flow (new method)
+    if (credentials.code) {
+      return this.connectViaOAuth(credentials.code)
+    }
+
+    // Legacy email/password flow (deprecated, for backwards compatibility)
+    if (credentials.email && credentials.password) {
+      return this.connectViaEmailPassword(credentials)
+    }
+
+    return {
+      success: false,
+      error: 'Invalid credentials format. Provide either OAuth code or email/password.',
+    }
+  }
+
+  /**
+   * Connect via OAuth 2.0 (new method)
+   * Note: Token exchange happens in the callback handler
+   * This method is here for interface compatibility
+   */
+  private async connectViaOAuth(code: string): Promise<ConnectResult> {
+    return {
+      success: false,
+      error: 'OAuth token exchange should happen in callback handler',
+    }
+  }
+
+  /**
+   * Connect via email/password (legacy method)
+   * Kept for backwards compatibility during migration
+   */
+  private async connectViaEmailPassword(credentials: {
+    email: string
+    password: string
+  }): Promise<ConnectResult> {
     const { email, password } = credentials
 
     if (!email || !password) {
@@ -65,19 +128,55 @@ export class GarminAdapter implements FitnessPlatform {
   }
 
   /**
-   * Refresh Garmin tokens by restoring session
-   * Garmin tokens are session-based and typically last ~30 days
+   * Refresh tokens
+   * Supports both OAuth and legacy session refresh
    */
   async refreshTokens(tokens: PlatformTokens): Promise<RefreshResult> {
-    const garminTokens = tokens as GarminTokens
+    // OAuth token refresh (new method)
+    if (this.isOAuthTokens(tokens)) {
+      return this.refreshOAuthTokens(tokens)
+    }
 
+    // Legacy session refresh
+    if (this.isLegacyTokens(tokens)) {
+      return this.refreshLegacyTokens(tokens)
+    }
+
+    return {
+      success: false,
+      error: 'Unknown token type',
+    }
+  }
+
+  /**
+   * Refresh OAuth 2.0 tokens (new method)
+   */
+  private async refreshOAuthTokens(tokens: GarminOAuthTokens): Promise<RefreshResult> {
     try {
-      const restored = await this.client.restoreSession(garminTokens)
+      const newTokens = await refreshAccessToken(tokens.refresh_token)
+      return {
+        success: true,
+        tokens: newTokens,
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to refresh OAuth tokens',
+      }
+    }
+  }
+
+  /**
+   * Refresh legacy session tokens
+   */
+  private async refreshLegacyTokens(tokens: GarminTokens): Promise<RefreshResult> {
+    try {
+      const restored = await this.client.restoreSession(tokens)
       if (restored) {
         // Session restored successfully, tokens are still valid
         return {
           success: true,
-          tokens: garminTokens,
+          tokens,
         }
       }
       return {
@@ -94,34 +193,72 @@ export class GarminAdapter implements FitnessPlatform {
 
   /**
    * Check if tokens are valid
-   * For Garmin, we check the OAuth2 expiration
    */
   isTokenValid(tokens: PlatformTokens): boolean {
-    const garminTokens = tokens as GarminTokens
+    // OAuth tokens
+    if (this.isOAuthTokens(tokens)) {
+      if (!tokens.expires_at) {
+        return false
+      }
 
-    if (!garminTokens.oauth2_token?.expires_at) {
-      return false
+      // Check if token expires within the next hour
+      const expiresAt = tokens.expires_at * 1000 // Convert to ms
+      const oneHourFromNow = Date.now() + (60 * 60 * 1000)
+
+      return expiresAt > oneHourFromNow
     }
 
-    // Check if token expires within the next hour
-    const expiresAt = garminTokens.oauth2_token.expires_at * 1000 // Convert to ms
-    const oneHourFromNow = Date.now() + (60 * 60 * 1000)
+    // Legacy tokens
+    if (this.isLegacyTokens(tokens)) {
+      if (!tokens.oauth2_token?.expires_at) {
+        return false
+      }
 
-    return expiresAt > oneHourFromNow
+      // Check if token expires within the next hour
+      const expiresAt = tokens.oauth2_token.expires_at * 1000 // Convert to ms
+      const oneHourFromNow = Date.now() + (60 * 60 * 1000)
+
+      return expiresAt > oneHourFromNow
+    }
+
+    return false
   }
 
   /**
    * Ensure client is authenticated with the provided tokens
    */
   private async ensureAuthenticated(tokens: PlatformTokens): Promise<void> {
-    const garminTokens = tokens as GarminTokens
-
-    if (!this.client.isLoggedIn()) {
-      const restored = await this.client.restoreSession(garminTokens)
-      if (!restored) {
-        throw new Error('Failed to restore Garmin session')
+    // OAuth authentication
+    if (this.isOAuthTokens(tokens)) {
+      // Check if token needs refresh
+      if (!this.isTokenValid(tokens)) {
+        const refreshResult = await this.refreshOAuthTokens(tokens)
+        if (!refreshResult.success || !refreshResult.tokens) {
+          throw new Error('Failed to refresh OAuth tokens')
+        }
+        // Use refreshed tokens
+        this.oauthClient = new GarminOAuthClient(
+          (refreshResult.tokens as GarminOAuthTokens).access_token
+        )
+      } else {
+        // Use existing tokens
+        this.oauthClient = new GarminOAuthClient(tokens.access_token)
       }
+      return
     }
+
+    // Legacy authentication
+    if (this.isLegacyTokens(tokens)) {
+      if (!this.client.isLoggedIn()) {
+        const restored = await this.client.restoreSession(tokens)
+        if (!restored) {
+          throw new Error('Failed to restore Garmin session')
+        }
+      }
+      return
+    }
+
+    throw new Error('Unknown token type')
   }
 
   /**
@@ -248,6 +385,13 @@ export class GarminAdapter implements FitnessPlatform {
   async getActivities(tokens: PlatformTokens, days: number): Promise<Activity[]> {
     await this.ensureAuthenticated(tokens)
 
+    // Use OAuth client if available
+    if (this.oauthClient) {
+      const rawActivities = await this.oauthClient.getActivities(days)
+      return rawActivities.map((raw) => this.normalizeActivity(raw))
+    }
+
+    // Fall back to legacy client
     const rawActivities = await this.client.fetchActivities(days)
     return rawActivities.map((raw) => this.normalizeActivity(raw))
   }
@@ -258,6 +402,15 @@ export class GarminAdapter implements FitnessPlatform {
   async getSleepData(tokens: PlatformTokens, days: number): Promise<SleepData[]> {
     await this.ensureAuthenticated(tokens)
 
+    // Use OAuth client if available
+    if (this.oauthClient) {
+      const rawSleep = await this.oauthClient.getSleepData(days)
+      return rawSleep
+        .map(({ date, data }) => this.normalizeSleep(date, data))
+        .filter((s): s is SleepData => s !== null)
+    }
+
+    // Fall back to legacy client
     const rawSleep = await this.client.fetchSleep(days)
     return rawSleep
       .map(({ date, data }) => this.normalizeSleep(date, data))
@@ -270,6 +423,15 @@ export class GarminAdapter implements FitnessPlatform {
   async getHeartRateData(tokens: PlatformTokens, days: number): Promise<HeartRateData[]> {
     await this.ensureAuthenticated(tokens)
 
+    // Use OAuth client if available
+    if (this.oauthClient) {
+      const rawHR = await this.oauthClient.getHeartRateData(days)
+      return rawHR
+        .map(({ date, data }) => this.normalizeHeartRate(date, data))
+        .filter((hr): hr is HeartRateData => hr !== null)
+    }
+
+    // Fall back to legacy client
     const rawHR = await this.client.fetchHeartRate(days)
     return rawHR
       .map(({ date, data }) => this.normalizeHeartRate(date, data))
@@ -282,6 +444,13 @@ export class GarminAdapter implements FitnessPlatform {
   async getDailySummary(tokens: PlatformTokens, days: number): Promise<DailySummary[]> {
     await this.ensureAuthenticated(tokens)
 
+    // Use OAuth client if available
+    if (this.oauthClient) {
+      const rawSummaries = await this.oauthClient.getDailySummaries(days)
+      return rawSummaries.map(({ date, data }) => this.normalizeDailySummary(date, data))
+    }
+
+    // Fall back to legacy client
     const rawSummaries = await this.client.fetchDailySummaries(days)
     return rawSummaries.map(({ date, data }) => this.normalizeDailySummary(date, data))
   }
@@ -292,6 +461,28 @@ export class GarminAdapter implements FitnessPlatform {
   async getAllData(tokens: PlatformTokens, days: number): Promise<AllPlatformData> {
     await this.ensureAuthenticated(tokens)
 
+    // Use OAuth client if available
+    if (this.oauthClient) {
+      const rawData = await this.oauthClient.fetchAll(days)
+
+      return {
+        activities: rawData.activities.map((raw) => this.normalizeActivity(raw)),
+        sleep: rawData.sleep
+          .map(({ date, data }) => this.normalizeSleep(date, data))
+          .filter((s): s is SleepData => s !== null),
+        heartRate: rawData.heartRate
+          .map(({ date, data }) => this.normalizeHeartRate(date, data))
+          .filter((hr): hr is HeartRateData => hr !== null),
+        dailySummaries: rawData.dailySummaries.map(({ date, data }) =>
+          this.normalizeDailySummary(date, data)
+        ),
+        vo2max: rawData.vo2max
+          .map(({ date, data }) => this.normalizeVO2Max(date, data))
+          .filter((v): v is VO2MaxData => v !== null),
+      }
+    }
+
+    // Fall back to legacy client
     const rawData = await this.client.fetchAll(days)
 
     return {
