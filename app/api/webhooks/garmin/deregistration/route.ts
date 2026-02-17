@@ -17,6 +17,10 @@ const createAdminClient = () => {
  * Called when a user disconnects their Garmin account or revokes access.
  * We update the platform_connections status to 'deregistered'.
  */
+export async function GET() {
+  return NextResponse.json({ status: 'ok' })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.json()

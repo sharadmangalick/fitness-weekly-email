@@ -17,6 +17,10 @@ const createAdminClient = () => {
  * Called when a user uploads a new activity to Garmin Connect.
  * We store the webhook and trigger mileage recalculation.
  */
+export async function GET() {
+  return NextResponse.json({ status: 'ok' })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.json()

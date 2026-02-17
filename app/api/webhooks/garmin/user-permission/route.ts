@@ -14,6 +14,10 @@ const createAdminClient = () => {
  * Garmin User Permission Webhook Handler
  * Called when user changes data sharing permissions
  */
+export async function GET() {
+  return NextResponse.json({ status: 'ok' })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.json()
