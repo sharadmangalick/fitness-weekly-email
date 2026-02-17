@@ -84,15 +84,6 @@ export default function OnboardingFlow({
     onConnectionsChange()
   }
 
-  const handleGarminSuccess = async () => {
-    setShowGarminModal(false)
-    // Track onboarding milestone
-    trackOnboardingPlatformConnected('garmin')
-    // Update onboarding status
-    await updateOnboardingStatus('platform_connected')
-    onConnectionsChange()
-  }
-
   const handleGoalsSaved = async () => {
     // Track onboarding milestone
     trackOnboardingGoalsSet()
