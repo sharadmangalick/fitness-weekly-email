@@ -16,7 +16,7 @@ import type {
 } from './client'
 
 const GARMIN_OAUTH_BASE_URL = process.env.GARMIN_OAUTH_BASE_URL || 'https://connect.garmin.com/oauthConfirm'
-const GARMIN_TOKEN_URL = process.env.GARMIN_TOKEN_URL || 'https://connect.garmin.com/oauth-service/oauth/token'
+const GARMIN_TOKEN_URL = process.env.GARMIN_TOKEN_URL || 'https://connectapi.garmin.com/oauth-service/oauth/token'
 const GARMIN_API_BASE_URL = process.env.GARMIN_API_BASE_URL || 'https://apis.garmin.com/wellness-api/rest'
 
 /**
