@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     // Send email via Resend
     const { data, error: sendError } = await getResend().emails.send({
-      from: 'Fitness Weekly <onboarding@resend.dev>',
+      from: 'RunPlan <noreply@runplan.fun>',
       to: body.email,
       subject: emailSubject,
       html: emailHtml,
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     // Send admin notification (fire-and-forget)
     getResend().emails.send({
-      from: 'Fitness Weekly <onboarding@resend.dev>',
+      from: 'RunPlan <noreply@runplan.fun>',
       to: ADMIN_EMAIL,
       subject: `New signup: ${body.name || 'Unknown'}`,
       text: `A new user has signed up!\n\nName: ${body.name || 'Not provided'}\nEmail: ${body.email}`,

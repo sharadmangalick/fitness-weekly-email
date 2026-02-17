@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await (supabase as any)
               .from('platform_connections')
-              .update({ status: 'deregistered', updated_at: new Date().toISOString() })
+              .update({ status: 'expired', updated_at: new Date().toISOString() })
               .eq('id', connection.id)
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

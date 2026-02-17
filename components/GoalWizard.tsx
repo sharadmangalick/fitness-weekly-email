@@ -33,7 +33,12 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
     initialConfig?.goal_category || 'race'
   )
   const [goalType, setGoalType] = useState(initialConfig?.goal_type || 'marathon')
-  const [goalDate, setGoalDate] = useState(initialConfig?.goal_date || '')
+  const [goalDate, setGoalDate] = useState(() => {
+    if (initialConfig?.goal_date) return initialConfig.goal_date
+    const future = new Date()
+    future.setDate(future.getDate() + 84) // 12 weeks
+    return future.toISOString().split('T')[0]
+  })
   const [goalHours, setGoalHours] = useState(
     initialConfig?.goal_time_minutes ? Math.floor(initialConfig.goal_time_minutes / 60) : 3
   )
@@ -112,13 +117,6 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
     } finally {
       setLoading(false)
     }
-  }
-
-  // Set default goal date
-  if (!goalDate) {
-    const future = new Date()
-    future.setDate(future.getDate() + 84) // 12 weeks
-    setGoalDate(future.toISOString().split('T')[0])
   }
 
   // Content that's shared between modal and embedded modes

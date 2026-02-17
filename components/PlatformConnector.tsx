@@ -78,14 +78,24 @@ export default function PlatformConnector({
         )}
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 flex items-center gap-3">
         {connected ? (
-          <button
-            onClick={onDisconnect}
-            className="text-sm text-red-600 hover:text-red-700 font-medium"
-          >
-            Disconnect
-          </button>
+          <>
+            {(status === 'expired' || status === 'error') && (
+              <button
+                onClick={onConnect}
+                className="btn-primary text-sm px-4 py-2"
+              >
+                Reconnect
+              </button>
+            )}
+            <button
+              onClick={onDisconnect}
+              className="text-sm text-red-600 hover:text-red-700 font-medium"
+            >
+              Disconnect
+            </button>
+          </>
         ) : (
           <button
             onClick={onConnect}

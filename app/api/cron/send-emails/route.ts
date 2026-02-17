@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
         console.log(`Subject: ${emailSubject}`)
 
         const { data: sendData, error: sendError } = await getResend().emails.send({
-          from: 'Fitness Weekly <onboarding@resend.dev>',
+          from: 'RunPlan <noreply@runplan.fun>',
           to: profile.email,
           subject: emailSubject,
           html: emailHtml,
