@@ -34,7 +34,7 @@ export function getGarminAuthUrl(state?: string): string {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'activity:read health:read profile:read',
+    // Note: Garmin grants permissions based on portal config, not scope parameter
     ...(state && { state }),
   })
 
