@@ -1,0 +1,35 @@
+<svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="150" cy="150" r="150" fill="url(#gradient)"/>
+
+  <!-- Runner Icon -->
+  <g transform="translate(90, 70)">
+    <!-- Head -->
+    <circle cx="60" cy="24" r="16" fill="white"/>
+
+    <!-- Body -->
+    <path d="M60 40 L60 94" stroke="white" stroke-width="12" stroke-linecap="round"/>
+
+    <!-- Left Arm (bent, running pose) -->
+    <path d="M60 59 L36 82" stroke="white" stroke-width="10" stroke-linecap="round"/>
+
+    <!-- Right Arm (forward, running pose) -->
+    <path d="M60 59 L84 47" stroke="white" stroke-width="10" stroke-linecap="round"/>
+
+    <!-- Left Leg (back, running stride) -->
+    <path d="M60 94 L42 141" stroke="white" stroke-width="10" stroke-linecap="round"/>
+    <path d="M42 141 L30 153" stroke="white" stroke-width="10" stroke-linecap="round"/>
+
+    <!-- Right Leg (forward, running stride) -->
+    <path d="M60 94 L78 141" stroke="white" stroke-width="10" stroke-linecap="round"/>
+    <path d="M78 141 L90 153" stroke="white" stroke-width="10" stroke-linecap="round"/>
+  </g>
+
+  <!-- Gradient Definition -->
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f97316;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ec4899;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>
