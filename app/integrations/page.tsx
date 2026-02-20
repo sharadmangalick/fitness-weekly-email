@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function IntegrationsPage() {
   return (
@@ -35,14 +36,12 @@ export default function IntegrationsPage() {
           <Link href="/integrations/garmin" className="group">
             <div className="bg-white rounded-2xl shadow-xl border-2 border-orange-100 p-8 hover:border-blue-300 transition-all hover:shadow-2xl">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-[#007CC3] rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                  <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2.4c5.302 0 9.6 4.298 9.6 9.6s-4.298 9.6-9.6 9.6S2.4 17.302 2.4 12 6.698 2.4 12 2.4z"/>
-                  </svg>
+                <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg group-hover:scale-110 transition-transform">
+                  <Image src="/garmin-connect-icon.png" alt="Garmin Connect" width={64} height={64} className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                    Garmin Connect
+                    Garmin Connect&#8482;
                   </h2>
                   <p className="text-slate-600 text-sm">Official OAuth Integration</p>
                 </div>
@@ -167,7 +166,7 @@ export default function IntegrationsPage() {
               <thead>
                 <tr className="border-b-2 border-slate-200">
                   <th className="text-left py-3 px-4 text-slate-900 font-semibold">Feature</th>
-                  <th className="text-center py-3 px-4 text-slate-900 font-semibold">Garmin</th>
+                  <th className="text-center py-3 px-4 text-slate-900 font-semibold">Garmin Connect&#8482;</th>
                   <th className="text-center py-3 px-4 text-slate-900 font-semibold">Strava</th>
                 </tr>
               </thead>
