@@ -614,7 +614,8 @@ export function generateEmailHtml(
           <!-- Prior Week Recap -->
           ${generatePriorWeekRecapHtml(priorWeekRecap, platform, distanceUnit)}
 
-          <!-- Health Snapshot -->
+          <!-- Health Snapshot - only show when metrics are available -->
+          ${healthSnapshot.length > 0 ? `
           <tr>
             <td style="padding: 24px;">
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #eee;">
@@ -634,6 +635,7 @@ export function generateEmailHtml(
               </table>
             </td>
           </tr>
+          ` : ''}
 
           <!-- Week Summary -->
           <tr>

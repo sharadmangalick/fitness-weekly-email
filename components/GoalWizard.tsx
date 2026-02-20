@@ -181,11 +181,11 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
                   onChange={(e) => setGoalType(e.target.value)}
                   className="input-field"
                 >
-                  <option value="5k">5K ({displayDistance(3.1, distanceUnit)} {distanceLabel(distanceUnit)})</option>
-                  <option value="10k">10K ({displayDistance(6.2, distanceUnit)} {distanceLabel(distanceUnit)})</option>
-                  <option value="half_marathon">Half Marathon ({displayDistance(13.1, distanceUnit)} {distanceLabel(distanceUnit)})</option>
-                  <option value="marathon">Marathon ({displayDistance(26.2, distanceUnit)} {distanceLabel(distanceUnit)})</option>
-                  <option value="ultra">Ultra Marathon ({displayDistance(50, distanceUnit)}+ {distanceLabel(distanceUnit)})</option>
+                  <option value="5k">5K (3.1 mi / 5.0 km)</option>
+                  <option value="10k">10K (6.2 mi / 10.0 km)</option>
+                  <option value="half_marathon">Half Marathon (13.1 mi / 21.1 km)</option>
+                  <option value="marathon">Marathon (26.2 mi / 42.2 km)</option>
+                  <option value="ultra">Ultra Marathon (50K+)</option>
                 </select>
               </div>
 

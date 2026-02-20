@@ -182,53 +182,55 @@ export default function TrainingPlanView({
         />
       )}
 
-      {/* Health Snapshot */}
-      <div className="card p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Health Snapshot</h3>
-          {platform === 'garmin' && (
-            <div className="flex items-center gap-1.5">
-              <Image src="/garmin-tag-black.png" alt="Garmin" width={60} height={16} className="h-3.5 w-auto opacity-60" />
-            </div>
-          )}
+      {/* Health Snapshot - only show when at least one metric has data */}
+      {(analysis.resting_hr.available || analysis.body_battery.available || analysis.sleep.available || analysis.stress.available) && (
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Health Snapshot</h3>
+            {platform === 'garmin' && (
+              <div className="flex items-center gap-1.5">
+                <Image src="/garmin-tag-black.png" alt="Garmin" width={60} height={16} className="h-3.5 w-auto opacity-60" />
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {analysis.resting_hr.available && (
+              <HealthMetricCard
+                label="Resting HR"
+                value={`${analysis.resting_hr.current} bpm`}
+                detail={analysis.resting_hr.change
+                  ? `${analysis.resting_hr.change > 0 ? '+' : ''}${analysis.resting_hr.change} from baseline`
+                  : undefined}
+                status={analysis.resting_hr.status}
+              />
+            )}
+            {analysis.body_battery.available && (
+              <HealthMetricCard
+                label="Body Battery"
+                value={`${analysis.body_battery.current_wake}`}
+                detail={`${(analysis.body_battery.trend || '').charAt(0).toUpperCase()}${(analysis.body_battery.trend || '').slice(1)}`}
+                status={analysis.body_battery.status}
+              />
+            )}
+            {analysis.sleep.available && (
+              <HealthMetricCard
+                label="Sleep"
+                value={`${analysis.sleep.avg_hours} hrs`}
+                detail={`${analysis.sleep.under_6h_pct}% nights under 6h`}
+                status={analysis.sleep.status}
+              />
+            )}
+            {analysis.stress.available && (
+              <HealthMetricCard
+                label="Stress"
+                value={`${analysis.stress.avg}`}
+                detail={`${analysis.stress.high_stress_pct}% high stress days`}
+                status={analysis.stress.status}
+              />
+            )}
+          </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {analysis.resting_hr.available && (
-            <HealthMetricCard
-              label="Resting HR"
-              value={`${analysis.resting_hr.current} bpm`}
-              detail={analysis.resting_hr.change
-                ? `${analysis.resting_hr.change > 0 ? '+' : ''}${analysis.resting_hr.change} from baseline`
-                : undefined}
-              status={analysis.resting_hr.status}
-            />
-          )}
-          {analysis.body_battery.available && (
-            <HealthMetricCard
-              label="Body Battery"
-              value={`${analysis.body_battery.current_wake}`}
-              detail={`${(analysis.body_battery.trend || '').charAt(0).toUpperCase()}${(analysis.body_battery.trend || '').slice(1)}`}
-              status={analysis.body_battery.status}
-            />
-          )}
-          {analysis.sleep.available && (
-            <HealthMetricCard
-              label="Sleep"
-              value={`${analysis.sleep.avg_hours} hrs`}
-              detail={`${analysis.sleep.under_6h_pct}% nights under 6h`}
-              status={analysis.sleep.status}
-            />
-          )}
-          {analysis.stress.available && (
-            <HealthMetricCard
-              label="Stress"
-              value={`${analysis.stress.avg}`}
-              detail={`${analysis.stress.high_stress_pct}% high stress days`}
-              status={analysis.stress.status}
-            />
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Weekly Schedule */}
       <div className="card p-6">

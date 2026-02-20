@@ -2,7 +2,7 @@
 
 This file tracks ideas and features discussed but not yet implemented. Items are organized by priority tier and include context to help decide what to work on next.
 
-Last Updated: 2026-02-06
+Last Updated: 2026-02-20
 
 ---
 
@@ -545,4 +545,67 @@ Add new ideas here with brief description, then organize into appropriate priori
 -->
 
 <!-- Add new ideas below this line -->
+
+### 11. Fix Ultra Marathon Distance Display
+**Source**: User feedback (2026-02-20)
+**Quick Summary**: Ultra marathon is technically longer than 26.2m/42.2km, and many ultras are 50km not 50mi. The "50+ miles" label is misleading. Should say "50m+" or show both units (e.g. "50K / 50mi+").
+**Why**: Accuracy matters to experienced runners; current display is technically wrong
+**Effort**: Small (label fix)
+**Next Step**: Update RACE_DISTANCES and GoalWizard display for ultra option
+
+### 12. Add "Get Faster" Fitness Goal
+**Source**: User feedback (2026-02-20)
+**Quick Summary**: Add a "Get Faster" option under non-race fitness goals. Currently only "Build Mileage", "Maintain Fitness", "Base Building", and "Return from Injury" exist.
+**Why**: Speed improvement is a common training goal that isn't represented. User explicitly said "Hitting a goal time is usually my main focus, so the most value to me is finding ways to do that with training."
+**Effort**: Medium (new goal type + planner logic for speed-focused plans)
+**Next Step**: Design what a speed-focused plan looks like (more intervals, tempo work, pace-specific workouts)
+
+### 13. Add Speed Work / Pace-Specific Workouts to Plans
+**Source**: User feedback (2026-02-20)
+**Quick Summary**: Current plans lack speed-specific work and focus on getting faster. User wants "feedback on my current training approach" and "how to modulate my effort based on what's actually happening to me physiologically."
+**Why**: High value for experienced runners who want to hit time goals, not just complete distances. Currently plans are volume-focused without enough pace/speed variety.
+**Effort**: Large (planner logic overhaul for speed sessions, VO2max intervals, threshold work)
+**Next Step**: Research pace-based training plan generation; consider integrating VO2max data for pace zones
+
+### 14. Custom Race Distance & Race Event Name
+**Source**: User feedback (2026-02-20)
+**Quick Summary**: Allow custom race distance (not just preset 5K/10K/HM/M/Ultra) and let users enter their actual race name (e.g. "Vancouver Marathon"). Could show the race name in emails and dashboard.
+**Why**: Personalization and accuracy; many races are non-standard distances
+**Effort**: Small-Medium (add custom distance input + race name field)
+**Next Step**: Add optional `race_name` field to training_configs; add custom distance input in GoalWizard
+
+### 15. Show Both Units in Race Distance Labels
+**Source**: User feedback (2026-02-20)
+**Quick Summary**: Even when using km, show both units for race distances: "Marathon (26.2 miles / 42.2km)". Canadians/Brits use "mileage" as a term but measure in km.
+**Why**: Runners commonly reference both units; dual display is clearest
+**Effort**: Small (GoalWizard label update)
+**Next Step**: Update race distance options to show both units regardless of preference
+
+### 16. Configurable Taper Length
+**Source**: User feedback (2026-02-20)
+**Quick Summary**: Current taper is 3 weeks. User feedback: "Would be good to be able to tune the taper OR maybe understand why 3 weeks. Personally I have only ever done 1 or 2 week taper, and have had best success with 1 week." Consider making taper duration configurable or at least explain the reasoning.
+**Why**: Taper length is highly individual; experienced runners have strong preferences
+**Effort**: Medium (add taper_weeks config option, update planner phase logic)
+**Next Step**: Add taper length selector in GoalWizard (1/2/3 weeks); update getTrainingPhase() to use configurable taper
+
+### 17. Non-Negotiable Workouts / Plan Adaptation
+**Source**: User feedback (2026-02-20)
+**Quick Summary**: Allow users to mark certain workouts as non-negotiable (e.g. "I always run with my club on Wednesdays") and have the plan adapt around them. User: "It would be good to be able to adapt it with non-negotiable workouts that are already in the plan."
+**Why**: Real runners have fixed commitments; plans that ignore these feel generic
+**Effort**: Large (new data model for fixed workouts + planner adaptation logic)
+**Next Step**: Design UX for marking fixed workout slots; determine how planner redistributes remaining volume
+
+### 18. Health Snapshot Not Populating / Sync Feedback
+**Source**: User feedback (2026-02-20)
+**Quick Summary**: User sees "Health Snapshot" section but it's empty. Unclear if/when it will populate. Need better feedback about what data is syncing and when metrics will appear.
+**Why**: Empty sections erode trust; users need to understand the data pipeline
+**Effort**: Small-Medium (add empty state messaging, sync status indicators)
+**Next Step**: Add helpful empty states ("Syncing your health data... metrics will appear after 24-48 hours of wearing your device") and check if Strava users get any health metrics at all
+
+### 19. Training Insights / Physiological Feedback
+**Source**: User feedback (2026-02-20)
+**Quick Summary**: User wants feedback on current fitness, compliance with plan, and physiological insights. "I never follow a plan 100%... but I'm keen to gain insights on how to modulate my effort based on what's actually happening to me physiologically."
+**Why**: This is the core value proposition - adaptive coaching based on real data. Currently plans are generated but don't deeply analyze what the user is actually doing vs. what was prescribed.
+**Effort**: Large (compliance tracking, actual vs planned analysis, trend insights)
+**Next Step**: Track actual training vs planned; generate weekly compliance insights; add trend analysis for pace/HR/effort
 
