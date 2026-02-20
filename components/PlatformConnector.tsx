@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 
 interface PlatformConnectorProps {
   platform: 'garmin' | 'strava'
@@ -19,16 +20,20 @@ export default function PlatformConnector({
 }: PlatformConnectorProps) {
   const platformInfo = {
     garmin: {
-      name: 'Garmin Connect',
+      name: 'Garmin Connect\u2122',
       icon: (
-        <svg viewBox="0 0 24 24" className="w-8 h-8" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-4h2v2h-2zm0-8h2v6h-2z"/>
-        </svg>
+        <Image
+          src="/garmin-connect-icon.png"
+          alt="Garmin Connect"
+          width={32}
+          height={32}
+          className="w-8 h-8 rounded-lg"
+        />
       ),
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       borderColor: 'border-blue-200',
-      description: 'Connect using your Garmin credentials',
+      description: 'Connect via Garmin\u2019s official OAuth',
     },
     strava: {
       name: 'Strava',

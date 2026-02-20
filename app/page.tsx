@@ -1,13 +1,18 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 
-// Garmin Logo Component
+// Garmin Connect Icon Component - uses official Garmin Connect™ app icon
 const GarminLogo = ({ className = "w-8 h-8" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2.4c5.302 0 9.6 4.298 9.6 9.6s-4.298 9.6-9.6 9.6S2.4 17.302 2.4 12 6.698 2.4 12 2.4zm0 1.2c-4.636 0-8.4 3.764-8.4 8.4s3.764 8.4 8.4 8.4 8.4-3.764 8.4-8.4-3.764-8.4-8.4-8.4zm4.95 3.45L12 12l-1.65-1.65L12 8.7l4.95 4.95-4.95 4.95-1.65-1.65 3.3-3.3-3.3-3.3z"/>
-  </svg>
+  <Image
+    src="/garmin-connect-icon.png"
+    alt="Garmin Connect"
+    width={48}
+    height={48}
+    className={`${className} rounded-lg`}
+  />
 )
 
 // Strava Logo Component
@@ -91,10 +96,8 @@ export default function HomePage() {
           {/* Platform Badges - Prominent */}
           <div className="flex justify-center items-center gap-4 mb-8">
             <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-2 border-blue-200 rounded-full px-4 py-2 shadow-md">
-              <div className="w-6 h-6 bg-[#007CC3] rounded-full flex items-center justify-center">
-                <GarminLogo className="w-4 h-4 text-slate-900" />
-              </div>
-              <span className="text-slate-900 font-medium text-sm">Garmin</span>
+              <GarminLogo className="w-6 h-6" />
+              <span className="text-slate-900 font-medium text-sm">Garmin Connect&#8482;</span>
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -148,11 +151,9 @@ export default function HomePage() {
             <div className="space-y-4">
               <div className="bg-white/80 backdrop-blur-xl border-2 border-blue-100 shadow-lg rounded-2xl p-6 hover:border-[#007CC3]/50 transition-colors group">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-14 h-14 bg-[#007CC3] rounded-xl flex items-center justify-center shadow-lg shadow-[#007CC3]/20">
-                    <GarminLogo className="w-8 h-8 text-slate-900" />
-                  </div>
+                  <GarminLogo className="w-14 h-14" />
                   <div>
-                    <div className="text-slate-900 font-bold text-lg">Garmin Connect</div>
+                    <div className="text-slate-900 font-bold text-lg">Garmin Connect&#8482;</div>
                     <div className="text-slate-700 text-sm">Auto-sync enabled</div>
                   </div>
                 </div>
@@ -316,16 +317,14 @@ export default function HomePage() {
               <div className="absolute -inset-1 bg-gradient-to-r from-[#007CC3] to-[#FC4C02] rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-300"></div>
               <div className="relative bg-white border-2 border-purple-100 rounded-3xl shadow-xl p-8 h-full">
                 <div className="flex gap-2 mb-6">
-                  <div className="w-12 h-12 bg-[#007CC3] rounded-xl flex items-center justify-center">
-                    <GarminLogo className="w-6 h-6 text-slate-900" />
-                  </div>
+                  <GarminLogo className="w-12 h-12" />
                   <div className="w-12 h-12 bg-[#FC4C02] rounded-xl flex items-center justify-center">
                     <StravaLogo className="w-6 h-6 text-slate-900" />
                   </div>
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3">Connect Your Platform</h3>
                 <p className="text-slate-700 leading-relaxed">
-                  One-click connection to Garmin or Strava. We automatically pull your runs, mileage, pace, and recovery data.
+                  One-click connection to Garmin Connect&#8482; or Strava. We automatically pull your runs, mileage, pace, and recovery data.
                 </p>
               </div>
             </div>
@@ -374,9 +373,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-3xl p-8 hover:border-blue-300 hover:shadow-lg transition-all group">
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-                  <GarminLogo className="w-5 h-5 text-[#007CC3]" />
-                </div>
+                <GarminLogo className="w-10 h-10" />
                 <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
                   <StravaLogo className="w-5 h-5 text-[#FC4C02]" />
                 </div>
@@ -877,14 +874,14 @@ export default function HomePage() {
                 Which running watches and platforms work?
               </h3>
               <p className="text-slate-700 leading-relaxed mb-3">
-                We support Garmin Connect and Strava. This covers most major running watches:
+                We support Garmin Connect&#8482; and Strava. This covers most major running watches:
               </p>
               <ul className="text-slate-700 space-y-2">
                 <li className="flex items-start gap-2">
                   <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
                   </svg>
-                  <span><strong className="text-slate-900">Garmin Connect:</strong> All Garmin running watches (Forerunner, Fenix, etc.)</span>
+                  <span><strong className="text-slate-900">Garmin Connect&#8482;:</strong> All Garmin running watches (Forerunner, Fenix, etc.)</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -960,9 +957,7 @@ export default function HomePage() {
             <div className="absolute -inset-1 bg-gradient-to-r from-[#007CC3] via-purple-500 to-[#FC4C02] rounded-3xl blur-xl opacity-40"></div>
             <div className="relative bg-white border-2 border-purple-200 rounded-3xl p-12 text-center shadow-2xl">
               <div className="flex justify-center gap-4 mb-6">
-                <div className="w-14 h-14 bg-[#007CC3] rounded-xl flex items-center justify-center shadow-lg">
-                  <GarminLogo className="w-8 h-8 text-white" />
-                </div>
+                <GarminLogo className="w-14 h-14" />
                 <div className="w-14 h-14 bg-[#FC4C02] rounded-xl flex items-center justify-center shadow-lg">
                   <StravaLogo className="w-8 h-8 text-white" />
                 </div>
@@ -971,7 +966,7 @@ export default function HomePage() {
                 Ready to Run Smarter?
               </h2>
               <p className="text-xl text-slate-700 mb-8 max-w-xl mx-auto">
-                Connect your Garmin or Strava and get your first personalized running plan this week.
+                Connect your Garmin Connect&#8482; or Strava and get your first personalized running plan this week.
               </p>
               <Link href="/signup" className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white px-8 py-4 rounded-full font-semibold text-lg hover:from-orange-600 hover:to-pink-600 transition-all hover:scale-105 shadow-lg hover:shadow-xl">
                 Create My Free Plan

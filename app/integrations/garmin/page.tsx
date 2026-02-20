@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function GarminIntegrationPage() {
   return (
@@ -24,14 +25,16 @@ export default function GarminIntegrationPage() {
           {/* Header Section */}
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 bg-[#007CC3] rounded-2xl flex items-center justify-center shadow-lg">
-                <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2.4c5.302 0 9.6 4.298 9.6 9.6s-4.298 9.6-9.6 9.6S2.4 17.302 2.4 12 6.698 2.4 12 2.4z"/>
-                </svg>
-              </div>
+              <Image
+                src="/garmin-connect-icon.png"
+                alt="Garmin Connect"
+                width={64}
+                height={64}
+                className="w-16 h-16 rounded-2xl shadow-lg"
+              />
               <div>
                 <h1 className="text-4xl md:text-5xl font-bold text-slate-900">
-                  Garmin Connect Integration
+                  Garmin Connect&#8482; Integration
                 </h1>
                 <p className="text-slate-600 mt-2">
                   Seamless connection to your Garmin watch data
@@ -44,7 +47,7 @@ export default function GarminIntegrationPage() {
           <section className="mb-12">
             <h2 className="text-2xl font-bold text-slate-900 mb-4">Overview</h2>
             <p className="text-slate-700 leading-relaxed mb-6">
-              RunPlan integrates directly with Garmin Connect using Garmin's official OAuth 2.0 API to provide personalized training plans based on your real-world running data and health metrics. This integration gives RunPlan secure, read-only access to your fitness data without ever requiring your Garmin password.
+              RunPlan integrates directly with Garmin Connect&#8482; using Garmin&apos;s official OAuth 2.0 API to provide personalized training plans based on your real-world running data and health metrics. This integration gives RunPlan secure, read-only access to your fitness data without ever requiring your Garmin password.
             </p>
 
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6">
@@ -64,7 +67,7 @@ export default function GarminIntegrationPage() {
           <section className="mb-12">
             <h2 className="text-2xl font-bold text-slate-900 mb-4">Compatible Devices</h2>
             <p className="text-slate-700 leading-relaxed mb-6">
-              RunPlan works with all Garmin running watches that sync to Garmin Connect, including:
+              RunPlan works with all Garmin running watches that sync to Garmin Connect&#8482;, including:
             </p>
 
             <div className="grid md:grid-cols-2 gap-4">
@@ -102,7 +105,7 @@ export default function GarminIntegrationPage() {
           <section className="mb-12">
             <h2 className="text-2xl font-bold text-slate-900 mb-4">What Data We Access</h2>
             <p className="text-slate-700 leading-relaxed mb-6">
-              With your permission, RunPlan accesses the following data from Garmin Connect to create personalized training plans:
+              With your permission, RunPlan accesses the following data from Garmin Connect&#8482; to create personalized training plans:
             </p>
 
             <div className="space-y-4">
@@ -210,7 +213,7 @@ export default function GarminIntegrationPage() {
                 <div>
                   <h3 className="font-semibold text-slate-900 mb-2">Automatic Sync</h3>
                   <p className="text-slate-700 text-sm leading-relaxed">
-                    Once connected, RunPlan automatically syncs your data from Garmin Connect. New runs and health metrics are pulled daily to keep your training plan up-to-date.
+                    Once connected, RunPlan automatically syncs your data from Garmin Connect&#8482;. New runs and health metrics are pulled daily to keep your training plan up-to-date.
                   </p>
                 </div>
               </div>
@@ -279,7 +282,7 @@ export default function GarminIntegrationPage() {
                   Revoke Anytime
                 </h3>
                 <p className="text-slate-700 text-sm">
-                  Disconnect your Garmin account from RunPlan or revoke access from Garmin Connect settings anytime
+                  Disconnect your Garmin account from RunPlan or revoke access from Garmin Connect&#8482; settings anytime
                 </p>
               </div>
             </div>
@@ -314,7 +317,7 @@ export default function GarminIntegrationPage() {
 
               <div className="border-2 border-slate-200 rounded-xl p-6">
                 <h3 className="font-semibold text-slate-900 mb-2">
-                  How often does RunPlan sync with Garmin Connect?
+                  How often does RunPlan sync with Garmin Connect&#8482;?
                 </h3>
                 <p className="text-slate-700 text-sm leading-relaxed">
                   RunPlan syncs daily to pull new activities and health metrics. When you complete a run, it typically appears in RunPlan within 24 hours. Your weekly training plan is generated every Sunday using your most recent data.
