@@ -88,11 +88,13 @@ export interface Database {
           goal_date: string | null
           goal_time_minutes: number | null
           goal_target: string | null
+          race_name: string | null
           custom_distance_miles: number | null
           target_weekly_mileage: number | null
           current_weekly_mileage: number
           experience_level: 'beginner' | 'intermediate' | 'advanced'
           preferred_long_run_day: 'saturday' | 'sunday'
+          taper_weeks: number
           email_day: string
           email_time: string
           email_enabled: boolean
@@ -107,11 +109,13 @@ export interface Database {
           goal_date?: string | null
           goal_time_minutes?: number | null
           goal_target?: string | null
+          race_name?: string | null
           custom_distance_miles?: number | null
           target_weekly_mileage?: number | null
           current_weekly_mileage?: number
           experience_level?: 'beginner' | 'intermediate' | 'advanced'
           preferred_long_run_day?: 'saturday' | 'sunday'
+          taper_weeks?: number
           email_day?: string
           email_time?: string
           email_enabled?: boolean
@@ -126,11 +130,13 @@ export interface Database {
           goal_date?: string | null
           goal_time_minutes?: number | null
           goal_target?: string | null
+          race_name?: string | null
           custom_distance_miles?: number | null
           target_weekly_mileage?: number | null
           current_weekly_mileage?: number
           experience_level?: 'beginner' | 'intermediate' | 'advanced'
           preferred_long_run_day?: 'saturday' | 'sunday'
+          taper_weeks?: number
           email_day?: string
           email_time?: string
           email_enabled?: boolean

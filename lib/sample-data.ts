@@ -40,11 +40,13 @@ export const sampleTrainingConfig: TrainingConfig = {
   })(),
   goal_time_minutes: 225, // 3:45 marathon
   goal_target: '3:45 Marathon',
+  race_name: null,
   custom_distance_miles: null,
   target_weekly_mileage: null,
   current_weekly_mileage: 45,
   experience_level: 'intermediate',
   preferred_long_run_day: 'sunday',
+  taper_weeks: 3,
   email_day: 'sunday',
   email_time: '07:00',
   email_enabled: true,

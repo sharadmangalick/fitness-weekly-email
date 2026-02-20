@@ -23,6 +23,7 @@ const RACE_DISTANCES: Record<string, number> = {
   'half_marathon': 13.1,
   'marathon': 26.2,
   'ultra': 50.0,
+  'custom': 0,
 }
 
 export default function GoalWizard({ initialConfig, calculatedMileage, mileageConfidence, distanceUnit: initialDistanceUnit = 'mi', stravaAutoDetected = false, onClose, onSave, onPlanGenerate, embedded = false }: GoalWizardProps) {
@@ -54,6 +55,9 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
   const [targetMileage, setTargetMileage] = useState(initialConfig?.target_weekly_mileage || 50)
   const [experienceLevel, setExperienceLevel] = useState(initialConfig?.experience_level || 'intermediate')
   const [longRunDay, setLongRunDay] = useState(initialConfig?.preferred_long_run_day || 'sunday')
+  const [raceName, setRaceName] = useState(initialConfig?.race_name || '')
+  const [customDistanceMiles, setCustomDistanceMiles] = useState(initialConfig?.custom_distance_miles || 10)
+  const [taperWeeks, setTaperWeeks] = useState(initialConfig?.taper_weeks ?? 3)
   const [emailDay, setEmailDay] = useState(initialConfig?.email_day || 'sunday')
   const [emailEnabled, setEmailEnabled] = useState(initialConfig?.email_enabled ?? true)
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>(initialDistanceUnit)
@@ -63,7 +67,8 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
   // Calculate pace (always calculate from miles, then convert for display)
   const calculatePace = () => {
     const totalMinutes = goalHours * 60 + goalMinutes
-    const distanceMiles = RACE_DISTANCES[goalType] || 26.2
+    const distanceMiles = goalType === 'custom' ? customDistanceMiles : (RACE_DISTANCES[goalType] || 26.2)
+    if (!distanceMiles || distanceMiles <= 0) return '--:--'
     const distanceInUnit = distanceUnit === 'km' ? distanceMiles * 1.60934 : distanceMiles
     const pacePerUnit = totalMinutes / distanceInUnit
     const mins = Math.floor(pacePerUnit)
@@ -79,6 +84,10 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
+      const raceLabel = goalType === 'custom'
+        ? (raceName || 'Custom Race')
+        : goalType.replace(/_/g, ' ')
+
       const config = {
         user_id: user.id,
         goal_category: goalCategory,
@@ -86,12 +95,15 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
         goal_date: goalCategory === 'race' ? goalDate : null,
         goal_time_minutes: goalCategory === 'race' ? goalHours * 60 + goalMinutes : null,
         goal_target: goalCategory === 'race'
-          ? `${goalHours}:${goalMinutes.toString().padStart(2, '0')} ${goalType.replace(/_/g, ' ')}`
+          ? `${goalHours}:${goalMinutes.toString().padStart(2, '0')} ${raceLabel}`
           : goalType.replace(/_/g, ' '),
+        race_name: goalCategory === 'race' && raceName ? raceName : null,
+        custom_distance_miles: goalType === 'custom' ? customDistanceMiles : null,
         target_weekly_mileage: goalType === 'build_mileage' ? targetMileage : null,
         current_weekly_mileage: currentMileage,
         experience_level: experienceLevel,
         preferred_long_run_day: longRunDay,
+        taper_weeks: goalCategory === 'race' ? taperWeeks : 3,
         email_day: emailDay,
         email_enabled: emailEnabled,
       }
@@ -186,7 +198,44 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
                   <option value="half_marathon">Half Marathon (13.1 mi / 21.1 km)</option>
                   <option value="marathon">Marathon (26.2 mi / 42.2 km)</option>
                   <option value="ultra">Ultra Marathon (50K+)</option>
+                  <option value="custom">Custom Distance</option>
                 </select>
+              </div>
+
+              {goalType === 'custom' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Race Distance ({distanceUnit === 'km' ? 'km' : 'miles'})
+                  </label>
+                  <input
+                    type="number"
+                    min="0.1"
+                    max="200"
+                    step="0.1"
+                    value={distanceUnit === 'km' ? Math.round(customDistanceMiles * 1.60934 * 10) / 10 : customDistanceMiles}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0
+                      setCustomDistanceMiles(distanceUnit === 'km' ? Math.round(val / 1.60934 * 10) / 10 : val)
+                    }}
+                    className="input-field"
+                    placeholder={distanceUnit === 'km' ? 'e.g. 15' : 'e.g. 10'}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Race Name <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={raceName}
+                  onChange={(e) => setRaceName(e.target.value)}
+                  className="input-field"
+                  placeholder="e.g. Boston Marathon, Local 10K"
+                  maxLength={100}
+                />
+                <p className="text-xs text-gray-500 mt-1">Personalizes your training plan and emails</p>
               </div>
 
               <div>
@@ -224,6 +273,20 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
                   min={new Date().toISOString().split('T')[0]}
                   className="input-field"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Taper Length</label>
+                <select
+                  value={taperWeeks}
+                  onChange={(e) => setTaperWeeks(parseInt(e.target.value))}
+                  className="input-field"
+                >
+                  <option value={1}>1 week (short races / experienced)</option>
+                  <option value={2}>2 weeks (half marathon / moderate)</option>
+                  <option value={3}>3 weeks (marathon+ / recommended)</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">How many weeks to reduce volume before race day</p>
               </div>
             </>
           )}
@@ -399,15 +462,27 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
                 <span className="text-gray-600">Goal</span>
                 <span className="font-medium">
                   {goalCategory === 'race'
-                    ? `${goalType.replace(/_/g, ' ')} - ${goalHours}:${goalMinutes.toString().padStart(2, '0')}`
+                    ? `${raceName || goalType.replace(/_/g, ' ')} - ${goalHours}:${goalMinutes.toString().padStart(2, '0')}`
                     : goalType.replace(/_/g, ' ')}
                 </span>
               </div>
-              {goalCategory === 'race' && (
+              {goalCategory === 'race' && goalType === 'custom' && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Race Date</span>
-                  <span className="font-medium">{new Date(goalDate).toLocaleDateString()}</span>
+                  <span className="text-gray-600">Distance</span>
+                  <span className="font-medium">{displayDistance(customDistanceMiles, distanceUnit)} {distanceLabel(distanceUnit)}</span>
                 </div>
+              )}
+              {goalCategory === 'race' && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Race Date</span>
+                    <span className="font-medium">{new Date(goalDate).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Taper</span>
+                    <span className="font-medium">{taperWeeks} week{taperWeeks !== 1 ? 's' : ''}</span>
+                  </div>
+                </>
               )}
               <div className="flex justify-between">
                 <span className="text-gray-600">Weekly {distanceUnit === 'km' ? 'Volume' : 'Mileage'}</span>

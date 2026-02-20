@@ -77,12 +77,13 @@ export interface TrainingPlan {
 
 /**
  * Determine training phase based on weeks until race
+ * @param taperWeeks configurable taper length (1-3 weeks, default 3)
  */
-function getTrainingPhase(weeksUntilRace: number | null): string {
+function getTrainingPhase(weeksUntilRace: number | null, taperWeeks: number = 3): string {
   if (weeksUntilRace === null) return 'maintenance'
   if (weeksUntilRace > 12) return 'base'
-  if (weeksUntilRace > 6) return 'build'
-  if (weeksUntilRace > 3) return 'peak'
+  if (weeksUntilRace > 3 + taperWeeks) return 'build'
+  if (weeksUntilRace > taperWeeks) return 'peak'
   if (weeksUntilRace > 0) return 'taper'
   return 'race_week'
 }
@@ -152,7 +153,8 @@ function generateDailyPlan(
   targetPace: string,
   goalType: string,
   raceDistance: number,
-  unit: DistanceUnit = 'mi'
+  unit: DistanceUnit = 'mi',
+  userRaceName?: string | null
 ): DayPlan[] {
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
   const longRunIdx = longRunDay === 'saturday' ? 5 : 6
@@ -188,7 +190,7 @@ function generateDailyPlan(
   }
 
   if (phase === 'race_week') {
-    return generateRaceWeekPlan(goalType, raceDistance, easyPace, unitLabel)
+    return generateRaceWeekPlan(goalType, raceDistance, easyPace, unitLabel, userRaceName)
   }
 
   if (phase === 'taper') {
@@ -372,7 +374,7 @@ function generateTaperPlan(
   return plan
 }
 
-function generateRaceWeekPlan(goalType: string, raceDistance: number, easyPace: string, unitLabel: string = '/mile'): DayPlan[] {
+function generateRaceWeekPlan(goalType: string, raceDistance: number, easyPace: string, unitLabel: string = '/mile', userRaceName?: string | null): DayPlan[] {
   const raceNames: Record<string, string> = {
     '5k': '5K',
     '10k': '10K',
@@ -381,7 +383,7 @@ function generateRaceWeekPlan(goalType: string, raceDistance: number, easyPace: 
     'ultra': 'Ultra',
     'custom': 'Race',
   }
-  const raceName = raceNames[goalType] || 'Race'
+  const raceName = userRaceName || raceNames[goalType] || 'Race'
 
   // Adjust shakeout distances based on race distance
   let shakeout1 = 3, shakeout2 = 2, shakeout3 = 2
@@ -413,7 +415,8 @@ function generateCoachingNotes(
   phase: string,
   weeksToRace: number | null,
   goalType: string,
-  recoveryAdjustment: number
+  recoveryAdjustment: number,
+  userRaceName?: string | null
 ): string[] {
   const notes: string[] = []
 
@@ -421,7 +424,7 @@ function generateCoachingNotes(
     '5k': '5K', '10k': '10K', 'half_marathon': 'Half Marathon',
     'marathon': 'Marathon', 'ultra': 'Ultra', 'custom': 'Race',
   }
-  const raceName = raceNames[goalType] || 'race'
+  const raceName = userRaceName || raceNames[goalType] || 'race'
 
   if (phase === 'peak') {
     notes.push(`Peak week with ${weeksToRace} weeks to ${raceName}. Quality over quantity - nail your long run and tempo.`)
@@ -492,8 +495,9 @@ export function generateTrainingPlan(
   distanceUnit: DistanceUnit = 'mi'
 ): TrainingPlan {
   const weeksToRace = calculateWeeksUntilRace(config.goal_date)
+  const taperWeeks = config.taper_weeks ?? 3
   const phase = config.goal_category === 'race'
-    ? getTrainingPhase(weeksToRace)
+    ? getTrainingPhase(weeksToRace, taperWeeks)
     : config.goal_type === 'maintain_fitness' ? 'maintenance' : 'build'
 
   const baseMileage = config.current_weekly_mileage
@@ -530,12 +534,13 @@ export function generateTrainingPlan(
     targetPace,
     config.goal_type,
     raceDistance,
-    distanceUnit
+    distanceUnit,
+    config.race_name
   )
 
   const totalMiles = dailyPlan.reduce((sum, day) => sum + (day.distance_miles || 0), 0)
 
-  const coachingNotes = generateCoachingNotes(phase, weeksToRace, config.goal_type, recoveryAdjustment)
+  const coachingNotes = generateCoachingNotes(phase, weeksToRace, config.goal_type, recoveryAdjustment, config.race_name)
   const recoveryRecommendations = generateRecoveryRecommendations(analysis, recoveryAdjustment)
 
   const raceNames: Record<string, string> = {
@@ -543,6 +548,7 @@ export function generateTrainingPlan(
     'marathon': 'Marathon', 'ultra': 'Ultra', 'build_mileage': 'Mileage Building',
     'maintain_fitness': 'Fitness Maintenance', 'base_building': 'Base Building',
   }
+  const displayRaceName = config.race_name || raceNames[config.goal_type] || 'race'
 
   let focus = ''
   if (recoveryAdjustment < 0.85) {
@@ -552,11 +558,11 @@ export function generateTrainingPlan(
   } else if (phase === 'build') {
     focus = 'Increasing volume and introducing quality workouts'
   } else if (phase === 'peak') {
-    focus = `Peak training - highest volume week, ${weeksToRace} weeks to ${raceNames[config.goal_type] || 'race'}`
+    focus = `Peak training - highest volume week, ${weeksToRace} weeks to ${displayRaceName}`
   } else if (phase === 'taper') {
-    focus = `Tapering - maintaining fitness while recovering for ${raceNames[config.goal_type] || 'race'}`
+    focus = `Tapering - maintaining fitness while recovering for ${displayRaceName}`
   } else if (phase === 'race_week') {
-    focus = `${raceNames[config.goal_type] || 'Race'} week - stay fresh and execute your race plan!`
+    focus = `${displayRaceName} week - stay fresh and execute your race plan!`
   } else {
     focus = raceNames[config.goal_type] || 'General training'
   }
@@ -611,12 +617,14 @@ export function generatePlanProjection(config: TrainingConfig): WeekProjection[]
   const baseMileage = config.current_weekly_mileage
   const intensityMultiplier = INTENSITY_MULTIPLIERS[config.intensity_preference || 'normal'] || 1.0
 
+  const taperWeeks = config.taper_weeks ?? 3
+
   for (let i = 0; i < totalWeeks; i++) {
     const weekStart = new Date(currentWeekStart)
     weekStart.setDate(weekStart.getDate() + (i * 7))
 
     const weeksUntilRace = totalWeeks - i - 1
-    const phase = getTrainingPhase(weeksUntilRace)
+    const phase = getTrainingPhase(weeksUntilRace, taperWeeks)
     const phaseMultiplier = PHASE_MULTIPLIERS[phase] || 1.0
     const longRunPct = LONG_RUN_PCT[phase] || 0.28
 
