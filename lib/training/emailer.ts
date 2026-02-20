@@ -8,7 +8,8 @@
 import type { TrainingPlan } from './planner'
 import type { AnalysisResults } from './analyzer'
 import type { TrainingConfig, UserProfile } from '../database.types'
-import type { AllPlatformData, Activity } from '../platforms/interface'
+import type { AllPlatformData, Activity, DistanceUnit } from '../platforms/interface'
+import { displayDistance, distanceLabel, distanceLabelShort, formatPaceForUnit, paceLabel } from '../platforms/interface'
 
 interface HealthMetric {
   metric: string
@@ -304,7 +305,7 @@ function buildPlanExplanation(
 /**
  * Generate HTML for prior week recap section
  */
-function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null, platform?: 'garmin' | 'strava'): string {
+function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null, platform?: 'garmin' | 'strava', unit: DistanceUnit = 'mi'): string {
   if (!recap) {
     return `
       <tr>
@@ -359,7 +360,7 @@ function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null, platform?: 'ga
                   <td style="padding: 8px 0;">
                     <span style="font-size: 16px;">&#127939;</span>
                     <span style="color: #333; margin-left: 8px;">
-                      <strong>${recap.totalWorkouts} workouts</strong> &#183; ${recap.totalMiles} miles total
+                      <strong>${recap.totalWorkouts} workouts</strong> &#183; ${displayDistance(recap.totalMiles, unit)} ${distanceLabel(unit)} total
                     </span>
                   </td>
                 </tr>
@@ -368,7 +369,7 @@ function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null, platform?: 'ga
                   <td style="padding: 8px 0;">
                     <span style="font-size: 16px;">&#128207;</span>
                     <span style="color: #333; margin-left: 8px;">
-                      Longest run: <strong>${recap.longestRun.distance} miles</strong> (${recap.longestRun.day})
+                      Longest run: <strong>${displayDistance(recap.longestRun.distance, unit)} ${distanceLabel(unit)}</strong> (${recap.longestRun.day})
                     </span>
                   </td>
                 </tr>
@@ -386,7 +387,7 @@ function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null, platform?: 'ga
                   <td style="padding: 8px 0;">
                     <span style="font-size: 16px;">&#128168;</span>
                     <span style="color: #333; margin-left: 8px;">
-                      Avg pace: <strong>${recap.avgPace}/mile</strong>
+                      Avg pace: <strong>${recap.avgPace}${paceLabel(unit)}</strong>
                     </span>
                   </td>
                 </tr>
@@ -403,7 +404,7 @@ function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null, platform?: 'ga
 /**
  * Generate HTML for plan explanation section
  */
-function generatePlanExplanationHtml(explanation: PlanExplanation, totalMiles: number, raceName: string): string {
+function generatePlanExplanationHtml(explanation: PlanExplanation, totalMiles: number, raceName: string, unit: DistanceUnit = 'mi'): string {
   const phaseLabels: Record<string, string> = {
     base: 'Base building',
     build: 'Build phase',
@@ -440,8 +441,8 @@ function generatePlanExplanationHtml(explanation: PlanExplanation, totalMiles: n
           <tr>
             <td style="padding: 16px;">
               <div style="font-size: 14px; color: #333; margin-bottom: 8px;">
-                <strong>This Week: ${totalMiles} miles</strong>
-                <span style="color: #666;"> based on your ${explanation.baseMileage} mi/week base</span>
+                <strong>This Week: ${displayDistance(totalMiles, unit, 0)} ${distanceLabel(unit)}</strong>
+                <span style="color: #666;"> based on your ${displayDistance(explanation.baseMileage, unit, 0)} ${distanceLabelShort(unit)}/week base</span>
               </div>
               <ul style="margin: 0; padding-left: 20px; color: #555; font-size: 13px;">
                 ${bullets.map(b => `<li style="margin-bottom: 4px;">${b}</li>`).join('')}
@@ -464,7 +465,8 @@ export function generateEmailHtml(
   plan: TrainingPlan,
   platformData: AllPlatformData | null,
   goalsUpdateUrl?: string,
-  platform?: 'garmin' | 'strava'
+  platform?: 'garmin' | 'strava',
+  distanceUnit: DistanceUnit = 'mi'
 ): string {
   const week = getWeekDates()
   const weeksToRace = calculateWeeksUntilRace(config.goal_date)
@@ -491,7 +493,7 @@ export function generateEmailHtml(
             </td>
             <td>
               <div style="font-weight: 600; color: #333;">${day.title}</div>
-              ${day.distance_miles ? `<div style="color: #666; font-size: 14px; margin-top: 4px;">${day.distance_miles} miles</div>` : ''}
+              ${day.distance_miles ? `<div style="color: #666; font-size: 14px; margin-top: 4px;">${displayDistance(day.distance_miles, distanceUnit)} ${distanceLabel(distanceUnit)}</div>` : ''}
               <div style="color: #888; font-size: 13px; margin-top: 4px;">${day.description}</div>
               ${day.notes ? `<div style="color: #764ba2; font-size: 12px; margin-top: 4px; font-style: italic;">${day.notes}</div>` : ''}
             </td>
@@ -610,7 +612,7 @@ export function generateEmailHtml(
           </tr>
 
           <!-- Prior Week Recap -->
-          ${generatePriorWeekRecapHtml(priorWeekRecap, platform)}
+          ${generatePriorWeekRecapHtml(priorWeekRecap, platform, distanceUnit)}
 
           <!-- Health Snapshot -->
           <tr>
@@ -640,9 +642,9 @@ export function generateEmailHtml(
                 <tr>
                   <td style="padding: 16px; text-align: center;">
                     <div style="font-size: 32px; font-weight: bold; color: #667eea;">
-                      ${plan.week_summary.total_miles}
+                      ${displayDistance(plan.week_summary.total_miles, distanceUnit, 0)}
                     </div>
-                    <div style="color: #666; font-size: 14px;">miles this week</div>
+                    <div style="color: #666; font-size: 14px;">${distanceLabel(distanceUnit)} this week</div>
                   </td>
                   <td style="padding: 16px; text-align: center; border-left: 1px solid #dee2e6;">
                     <div style="font-size: 18px; font-weight: 600; color: #333;">
@@ -656,7 +658,7 @@ export function generateEmailHtml(
           </tr>
 
           <!-- Plan Explanation -->
-          ${generatePlanExplanationHtml(planExplanation, plan.week_summary.total_miles, raceName)}
+          ${generatePlanExplanationHtml(planExplanation, plan.week_summary.total_miles, raceName, distanceUnit)}
 
           <!-- Daily Plan -->
           <tr>

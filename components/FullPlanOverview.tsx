@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import type { WeekProjection } from '@/lib/training/planner'
 import type { PlanModification } from '@/lib/database.types'
+import { displayDistance, distanceLabel, type DistanceUnit } from '@/lib/platforms/interface'
 
 interface PlanOverviewData {
   projection: WeekProjection[]
@@ -30,7 +31,7 @@ const CONCERN_LABELS: Record<string, string> = {
   poor_sleep: 'Poor sleep quality',
 }
 
-export default function FullPlanOverview() {
+export default function FullPlanOverview({ distanceUnit = 'mi' }: { distanceUnit?: DistanceUnit }) {
   const [data, setData] = useState<PlanOverviewData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -144,7 +145,7 @@ export default function FullPlanOverview() {
               <tr className="border-b bg-gray-50/50">
                 <th className="px-4 py-3 text-left font-medium text-gray-500">Wk</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-500">Phase</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-500">Miles</th>
+                <th className="px-4 py-3 text-right font-medium text-gray-500">{distanceUnit === 'km' ? 'Km' : 'Miles'}</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-500">Long</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
               </tr>
@@ -181,18 +182,18 @@ export default function FullPlanOverview() {
                     {/* Projected mileage */}
                     <td className="px-4 py-3 text-right">
                       <span className={`font-medium ${modification ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                        {week.projectedMileage}
+                        {displayDistance(week.projectedMileage, distanceUnit, 0)}
                       </span>
                       {modification && (
                         <span className="ml-1 font-medium text-amber-600">
-                          {modification.adjusted_mileage}
+                          {displayDistance(modification.adjusted_mileage, distanceUnit, 0)}
                         </span>
                       )}
                     </td>
 
                     {/* Long run */}
                     <td className="px-4 py-3 text-right text-gray-600">
-                      {isRaceWeek ? '--' : week.longRunMiles}
+                      {isRaceWeek ? '--' : displayDistance(week.longRunMiles, distanceUnit, 0)}
                     </td>
 
                     {/* Status */}

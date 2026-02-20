@@ -6,6 +6,7 @@
  */
 
 export type PlatformName = 'garmin' | 'strava'
+export type DistanceUnit = 'mi' | 'km'
 
 // Token types
 export interface GarminOAuthTokens {
@@ -212,4 +213,38 @@ export function formatPace(totalMinutes: number, distanceMiles: number): string 
   const secs = Math.round((pacePerMile - mins) * 60)
 
   return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+// Unit conversion utilities
+
+export function milesToKm(miles: number): number {
+  return miles * 1.60934
+}
+
+export function displayDistance(miles: number, unit: DistanceUnit, decimals: number = 1): string {
+  const value = unit === 'km' ? milesToKm(miles) : miles
+  return value.toFixed(decimals)
+}
+
+export function distanceLabel(unit: DistanceUnit): string {
+  return unit === 'km' ? 'km' : 'miles'
+}
+
+export function distanceLabelShort(unit: DistanceUnit): string {
+  return unit === 'km' ? 'km' : 'mi'
+}
+
+export function formatPaceForUnit(totalMinutes: number, distanceMiles: number, unit: DistanceUnit): string {
+  if (distanceMiles <= 0) return '--:--'
+
+  const distanceInUnit = unit === 'km' ? milesToKm(distanceMiles) : distanceMiles
+  const pacePerUnit = totalMinutes / distanceInUnit
+  const mins = Math.floor(pacePerUnit)
+  const secs = Math.round((pacePerUnit - mins) * 60)
+
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+export function paceLabel(unit: DistanceUnit): string {
+  return unit === 'km' ? '/km' : '/mile'
 }

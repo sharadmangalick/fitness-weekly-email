@@ -10,6 +10,7 @@ import { calculateUpdatedBaseline } from '@/lib/training/mileage-calculator'
 import { Resend } from 'resend'
 import type { GarminOAuthTokens, StravaTokens, AllPlatformData } from '@/lib/platforms/interface'
 import type { TrainingConfig, UserProfile, PlatformConnection } from '@/lib/database.types'
+import type { DistanceUnit } from '@/lib/platforms/interface'
 
 // Lazy initialize Resend to avoid build-time errors
 let resend: Resend | null = null
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
       .from('training_configs')
       .select(`
         *,
-        user_profiles!inner(id, email, name, preferred_platform)
+        user_profiles!inner(id, email, name, preferred_platform, distance_unit)
       `)
       .eq('email_enabled', true)
 
@@ -199,13 +200,16 @@ export async function POST(request: NextRequest) {
         // Analyze data
         const analysis = analyzeTrainingData(platformData)
 
+        // Get user's distance unit preference
+        const distanceUnit = (profile as any).distance_unit as DistanceUnit || 'mi'
+
         // Generate training plan (with updated baseline)
-        const plan = generateTrainingPlan(config, analysis)
+        const plan = generateTrainingPlan(config, analysis, distanceUnit)
 
         // Generate email
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://runplan.fun'
         const goalsUrl = `${appUrl}/dashboard`
-        const emailHtml = generateEmailHtml(profile, config, analysis, plan, platformData, goalsUrl, connection.platform as 'garmin' | 'strava')
+        const emailHtml = generateEmailHtml(profile, config, analysis, plan, platformData, goalsUrl, connection.platform as 'garmin' | 'strava', distanceUnit)
         const emailSubject = generateEmailSubject(config)
 
         // Send email via Resend

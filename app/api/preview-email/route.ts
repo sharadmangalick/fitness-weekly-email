@@ -11,6 +11,7 @@ import {
   samplePlatformData,
 } from '@/lib/sample-data'
 import type { Database } from '@/lib/database.types'
+import type { DistanceUnit } from '@/lib/platforms/interface'
 
 // Force dynamic rendering since we use cookies for auth
 export const dynamic = 'force-dynamic'
@@ -64,6 +65,7 @@ export async function GET() {
 
       // If we have all the data, use the real plan
       if (cachedPlan && profile && config) {
+        const distanceUnit = ((profile as any).distance_unit as DistanceUnit) || 'mi'
         // Note: For preview, we pass null for platformData since we don't fetch it here
         // The actual cron job will pass real data
         const html = generateEmailHtml(
@@ -73,7 +75,8 @@ export async function GET() {
           cachedPlan.plan_json,
           null, // platformData not fetched for preview
           undefined,
-          connection?.platform as 'garmin' | 'strava' | undefined
+          connection?.platform as 'garmin' | 'strava' | undefined,
+          distanceUnit
         )
 
         return new NextResponse(html, {

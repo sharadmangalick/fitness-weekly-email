@@ -6,7 +6,7 @@ import { GarminAdapter } from '@/lib/platforms/garmin/adapter'
 import { StravaAdapter } from '@/lib/platforms/strava/adapter'
 import { analyzeTrainingData, AnalysisResults } from '@/lib/training/analyzer'
 import { generateTrainingPlan, TrainingPlan, calculateRecoveryAdjustment, getRecoveryConcerns } from '@/lib/training/planner'
-import type { GarminOAuthTokens, StravaTokens, AllPlatformData } from '@/lib/platforms/interface'
+import type { GarminOAuthTokens, StravaTokens, AllPlatformData, DistanceUnit } from '@/lib/platforms/interface'
 import type { TrainingConfig } from '@/lib/database.types'
 
 // Cache validity in days
@@ -150,7 +150,8 @@ export async function POST(request: NextRequest) {
     const analysis = analyzeTrainingData(platformData)
 
     // Generate the training plan
-    const plan = generateTrainingPlan(config as TrainingConfig, analysis)
+    const distanceUnit = ((profile as any).distance_unit as DistanceUnit) || 'mi'
+    const plan = generateTrainingPlan(config as TrainingConfig, analysis, distanceUnit)
 
     // Cache the generated plan (upsert)
     await (adminClient as any)

@@ -8,7 +8,8 @@
 import type { TrainingPlan, DayPlan } from './planner'
 import type { AnalysisResults } from './analyzer'
 import type { TrainingConfig, UserProfile } from '../database.types'
-import type { AllPlatformData } from '../platforms/interface'
+import type { AllPlatformData, DistanceUnit } from '../platforms/interface'
+import { displayDistance, distanceLabel } from '../platforms/interface'
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -84,7 +85,8 @@ export function generateFirstWeekEmailHtml(
   plan: TrainingPlan,
   platformData: AllPlatformData | null,
   dashboardUrl: string,
-  platform?: 'garmin' | 'strava'
+  platform?: 'garmin' | 'strava',
+  distanceUnit: DistanceUnit = 'mi'
 ): string {
   const { dayName, daysRemaining } = getTodayInfo()
   const weeksToRace = calculateWeeksUntilRace(config.goal_date)
@@ -105,7 +107,7 @@ export function generateFirstWeekEmailHtml(
             </td>
             <td>
               <div style="font-weight: 600; color: #333;">${day.title}</div>
-              ${day.distance_miles ? `<div style="color: #666; font-size: 14px; margin-top: 4px;">${day.distance_miles} miles</div>` : ''}
+              ${day.distance_miles ? `<div style="color: #666; font-size: 14px; margin-top: 4px;">${displayDistance(day.distance_miles, distanceUnit)} ${distanceLabel(distanceUnit)}</div>` : ''}
               <div style="color: #888; font-size: 13px; margin-top: 4px;">${day.description}</div>
               ${day.notes ? `<div style="color: #764ba2; font-size: 12px; margin-top: 4px; font-style: italic;">${day.notes}</div>` : ''}
             </td>
@@ -179,9 +181,9 @@ export function generateFirstWeekEmailHtml(
                 <tr>
                   <td style="padding: 16px; text-align: center;">
                     <div style="font-size: 32px; font-weight: bold; color: #667eea;">
-                      ${Math.round(remainingMiles)}
+                      ${displayDistance(remainingMiles, distanceUnit, 0)}
                     </div>
-                    <div style="color: #666; font-size: 14px;">miles remaining this week</div>
+                    <div style="color: #666; font-size: 14px;">${distanceLabel(distanceUnit)} remaining this week</div>
                   </td>
                   <td style="padding: 16px; text-align: center; border-left: 1px solid #dee2e6;">
                     <div style="font-size: 18px; font-weight: 600; color: #333;">

@@ -141,9 +141,12 @@ export async function GET(request: NextRequest) {
     })
 
     let tokens
+    let measurementPreference: string | undefined
     try {
-      tokens = await exchangeCodeForTokens(code, flowId)
-      logger.info('Token exchange successful', { athleteId: tokens.athlete_id })
+      const exchangeResult = await exchangeCodeForTokens(code, flowId)
+      tokens = exchangeResult.tokens
+      measurementPreference = exchangeResult.measurement_preference
+      logger.info('Token exchange successful', { athleteId: tokens.athlete_id, measurementPreference })
       await logger.record({
         userId: user.id,
         step: 'token_exchange',
@@ -283,6 +286,17 @@ export async function GET(request: NextRequest) {
       status: 'success',
       metadata: { connectionStatus: verifyData.status },
     })
+
+    // Auto-detect distance unit from Strava measurement preference
+    if (measurementPreference) {
+      const distanceUnit = measurementPreference === 'meters' ? 'km' : 'mi'
+      logger.info('Auto-detected distance unit from Strava', { measurementPreference, distanceUnit })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
+        .from('user_profiles')
+        .update({ distance_unit: distanceUnit })
+        .eq('id', user.id)
+    }
 
     // Mark flow as completed
     logger.info('OAuth flow completed successfully')

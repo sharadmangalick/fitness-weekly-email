@@ -10,7 +10,7 @@ import { generateTrainingPlan } from '@/lib/training/planner'
 import { generateFirstWeekEmailHtml, generateFirstWeekEmailSubject } from '@/lib/training/first-week-emailer'
 import { Resend } from 'resend'
 import type { Database, UserProfile, TrainingConfig, PlatformConnection } from '@/lib/database.types'
-import type { GarminOAuthTokens, StravaTokens } from '@/lib/platforms/interface'
+import type { GarminOAuthTokens, StravaTokens, DistanceUnit } from '@/lib/platforms/interface'
 
 // Lazy initialize Resend
 let resend: Resend | null = null
@@ -115,13 +115,15 @@ export async function POST(request: NextRequest) {
     // Analyze data
     const analysis = analyzeTrainingData(platformData)
 
+    // Get user's distance unit preference
+    const distanceUnit = (profile as any).distance_unit as DistanceUnit || 'mi'
+
     // Generate full training plan
-    const plan = generateTrainingPlan(config as any, analysis)
+    const plan = generateTrainingPlan(config as any, analysis, distanceUnit)
 
     // Generate email with partial week
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://runplan.fun'
     const dashboardUrl = `${appUrl}/dashboard`
-
     const emailHtml = generateFirstWeekEmailHtml(
       profile,
       config,
@@ -129,7 +131,8 @@ export async function POST(request: NextRequest) {
       plan,
       platformData,
       dashboardUrl,
-      connection.platform as 'garmin' | 'strava'
+      connection.platform as 'garmin' | 'strava',
+      distanceUnit
     )
     const emailSubject = generateFirstWeekEmailSubject(profile.name)
 

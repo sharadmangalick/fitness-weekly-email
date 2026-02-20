@@ -7,6 +7,8 @@
 
 import type { AnalysisResults } from './analyzer'
 import type { TrainingConfig } from '../database.types'
+import type { DistanceUnit } from '../platforms/interface'
+import { displayDistance, distanceLabelShort, paceLabel } from '../platforms/interface'
 
 // Race distance mapping
 const RACE_DISTANCES: Record<string, number> = {
@@ -149,17 +151,28 @@ function generateDailyPlan(
   phase: string,
   targetPace: string,
   goalType: string,
-  raceDistance: number
+  raceDistance: number,
+  unit: DistanceUnit = 'mi'
 ): DayPlan[] {
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
   const longRunIdx = longRunDay === 'saturday' ? 5 : 6
 
-  // Parse target pace
+  // Parse target pace (per mile)
   const [paceMins, paceSecs] = targetPace.split(':').map(Number)
+  const pacePerMileMinutes = paceMins + paceSecs / 60
 
-  // Calculate pace zones
-  const easyPace = `${paceMins + 1}:${paceSecs.toString().padStart(2, '0')}-${paceMins + 2}:${paceSecs.toString().padStart(2, '0')}`
-  const tempoPace = `${paceMins}:${paceSecs.toString().padStart(2, '0')}-${paceMins}:${((paceSecs + 15) % 60).toString().padStart(2, '0')}`
+  // Calculate pace zones in the user's preferred unit
+  const unitLabel = paceLabel(unit)
+  const convertPace = (paceMinPerMile: number): string => {
+    const paceMinPerUnit = unit === 'km' ? paceMinPerMile / 1.60934 : paceMinPerMile
+    const m = Math.floor(paceMinPerUnit)
+    const s = Math.round((paceMinPerUnit - m) * 60)
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }
+
+  const easyPace = `${convertPace(pacePerMileMinutes + 1)}-${convertPace(pacePerMileMinutes + 2)}`
+  const tempoPace = `${convertPace(pacePerMileMinutes)}-${convertPace(pacePerMileMinutes + 0.25)}`
+  const displayTargetPace = convertPace(pacePerMileMinutes)
 
   const remainingMiles = weeklyMiles - longRunMiles
   const includeTempo = phase === 'build' || phase === 'peak'
@@ -175,11 +188,11 @@ function generateDailyPlan(
   }
 
   if (phase === 'race_week') {
-    return generateRaceWeekPlan(goalType, raceDistance, easyPace)
+    return generateRaceWeekPlan(goalType, raceDistance, easyPace, unitLabel)
   }
 
   if (phase === 'taper') {
-    return generateTaperPlan(remainingMiles, longRunMiles, longRunDay, easyPace, tempoPace, targetPace)
+    return generateTaperPlan(remainingMiles, longRunMiles, longRunDay, easyPace, tempoPace, displayTargetPace, unitLabel)
   }
 
   const plan: DayPlan[] = []
@@ -193,7 +206,7 @@ function generateDailyPlan(
         workout_type: 'long_run',
         title: 'Long Run',
         distance_miles: longRunMiles,
-        description: `Start easy at ${easyPace}/mile, then settle into ${targetPace}/mile for the middle portion. Practice race-day nutrition.`,
+        description: `Start easy at ${easyPace}${unitLabel}, then settle into ${displayTargetPace}${unitLabel} for the middle portion. Practice race-day nutrition.`,
         notes: 'Key workout #1 - stay relaxed and focus on time on feet.',
       })
     } else if (i === 0) {
@@ -211,17 +224,19 @@ function generateDailyPlan(
         workout_type: 'easy',
         title: 'Easy Run',
         distance_miles: easyMiles,
-        description: `Easy pace at ${easyPace}/mile. Keep heart rate in Zone 2.`,
+        description: `Easy pace at ${easyPace}${unitLabel}. Keep heart rate in Zone 2.`,
         notes: null,
       })
     } else if (i === 2) {
       if (includeTempo) {
+        const warmCoolDist = unit === 'km' ? '1.6 km' : '1 mile'
+        const tempoCoreDist = unit === 'km' ? displayDistance(tempoMiles - 2, unit, 0) + ' km' : `${tempoMiles - 2} miles`
         plan.push({
           day,
           workout_type: 'tempo',
           title: 'Tempo Run',
           distance_miles: tempoMiles,
-          description: `1 mile warm-up, ${tempoMiles - 2} miles at ${tempoPace}/mile, 1 mile cool-down.`,
+          description: `${warmCoolDist} warm-up, ${tempoCoreDist} at ${tempoPace}${unitLabel}, ${warmCoolDist} cool-down.`,
           notes: 'Key workout #2 - comfortably hard effort.',
         })
       } else {
@@ -244,12 +259,13 @@ function generateDailyPlan(
         notes: 'Quality over quantity - rest makes you faster.',
       })
     } else if (i === 4) {
+      const easyDisplay = `${displayDistance(easyMiles, unit, 0)} ${distanceLabelShort(unit)}`
       plan.push({
         day,
         workout_type: 'easy',
         title: 'Easy Run + Strides',
         distance_miles: easyMiles,
-        description: `Easy ${easyMiles} miles at ${easyPace}/mile, then 4x100m strides with full recovery.`,
+        description: `Easy ${easyDisplay} at ${easyPace}${unitLabel}, then 4x100m strides with full recovery.`,
         notes: 'Strides keep your legs feeling snappy.',
       })
     } else if (i === 5 && longRunDay === 'sunday') {
@@ -258,7 +274,7 @@ function generateDailyPlan(
         workout_type: 'easy',
         title: 'Pre-Long Run Shakeout',
         distance_miles: Math.round(easyMiles * 0.6),
-        description: `Short easy run at ${easyPace}/mile. Just loosening up for tomorrow.`,
+        description: `Short easy run at ${easyPace}${unitLabel}. Just loosening up for tomorrow.`,
         notes: 'Keep it short and easy. Prepare gear for tomorrow.',
       })
     } else if (i === 6 && longRunDay === 'saturday') {
@@ -276,7 +292,7 @@ function generateDailyPlan(
         workout_type: 'easy',
         title: 'Easy Run',
         distance_miles: easyMiles,
-        description: `Easy pace at ${easyPace}/mile.`,
+        description: `Easy pace at ${easyPace}${unitLabel}.`,
         notes: null,
       })
     }
@@ -291,7 +307,8 @@ function generateTaperPlan(
   longRunDay: string,
   easyPace: string,
   tempoPace: string,
-  targetPace: string
+  targetPace: string,
+  unitLabel: string = '/mile'
 ): DayPlan[] {
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
   const longRunIdx = longRunDay === 'saturday' ? 5 : 6
@@ -308,7 +325,7 @@ function generateTaperPlan(
         workout_type: 'long_run',
         title: 'Taper Long Run',
         distance_miles: longRunMiles,
-        description: `Easy effort at ${easyPace}/mile with a few miles at ${targetPace}/mile to stay sharp.`,
+        description: `Easy effort at ${easyPace}${unitLabel} with a few at ${targetPace}${unitLabel} to stay sharp.`,
         notes: 'Keep it controlled - save energy for race day.',
       })
     } else if (i === 0 || i === 3) {
@@ -328,7 +345,7 @@ function generateTaperPlan(
         distance_miles: easyMiles,
         description: i === 4
           ? `Easy ${easyMiles} miles with 4x100m strides at the end.`
-          : `Easy at ${easyPace}/mile. Keep legs moving.`,
+          : `Easy at ${easyPace}${unitLabel}. Keep legs moving.`,
         notes: i === 4 ? 'Keep the legs feeling fresh and fast.' : null,
       })
     } else if (i === 2) {
@@ -337,7 +354,7 @@ function generateTaperPlan(
         workout_type: 'tempo',
         title: 'Short Tempo',
         distance_miles: easyMiles,
-        description: `1 mile easy, 2 miles at ${tempoPace}/mile, 1 mile easy. Stay sharp without fatiguing.`,
+        description: `Easy warm-up, tempo at ${tempoPace}${unitLabel}, easy cool-down. Stay sharp without fatiguing.`,
         notes: 'Brief quality to maintain sharpness.',
       })
     } else {
@@ -355,7 +372,7 @@ function generateTaperPlan(
   return plan
 }
 
-function generateRaceWeekPlan(goalType: string, raceDistance: number, easyPace: string): DayPlan[] {
+function generateRaceWeekPlan(goalType: string, raceDistance: number, easyPace: string, unitLabel: string = '/mile'): DayPlan[] {
   const raceNames: Record<string, string> = {
     '5k': '5K',
     '10k': '10K',
@@ -380,9 +397,9 @@ function generateRaceWeekPlan(goalType: string, raceDistance: number, easyPace: 
 
   return [
     { day: 'Monday', workout_type: 'rest', title: 'Rest Day', distance_miles: null, description: 'Complete rest. Focus on hydration and sleep.', notes: 'Race week begins - stay calm.' },
-    { day: 'Tuesday', workout_type: 'easy', title: 'Easy Shakeout', distance_miles: shakeout1, description: `Very easy ${shakeout1} miles at ${easyPace}/mile with 4 strides.`, notes: 'Keep legs loose.' },
+    { day: 'Tuesday', workout_type: 'easy', title: 'Easy Shakeout', distance_miles: shakeout1, description: `Very easy shakeout at ${easyPace}${unitLabel} with 4 strides.`, notes: 'Keep legs loose.' },
     { day: 'Wednesday', workout_type: 'rest', title: 'Rest Day', distance_miles: null, description: 'Complete rest. Visualize your race.', notes: null },
-    { day: 'Thursday', workout_type: 'easy', title: 'Easy Shakeout', distance_miles: shakeout2, description: `Very easy ${shakeout2} miles. Just blood flow.`, notes: 'Short and sweet.' },
+    { day: 'Thursday', workout_type: 'easy', title: 'Easy Shakeout', distance_miles: shakeout2, description: `Very easy shakeout. Just blood flow.`, notes: 'Short and sweet.' },
     { day: 'Friday', workout_type: 'rest', title: 'Rest Day', distance_miles: null, description: 'Rest. Prepare race gear, pin your bib, lay out clothes.', notes: 'Early bedtime tonight.' },
     { day: 'Saturday', workout_type: 'easy', title: 'Pre-Race Shakeout', distance_miles: shakeout3, description: 'Easy 15-20 min with 4 strides. Shake out the nerves.', notes: 'Stay off your feet the rest of the day.' },
     { day: 'Sunday', workout_type: 'race', title: `RACE DAY - ${raceName}!`, distance_miles: raceDistance, description: 'Execute your race plan. Start conservative, negative split, finish strong!', notes: 'Trust your training - you\'ve got this!' },
@@ -471,7 +488,8 @@ function generateRecoveryRecommendations(analysis: AnalysisResults, recoveryAdju
  */
 export function generateTrainingPlan(
   config: TrainingConfig,
-  analysis: AnalysisResults
+  analysis: AnalysisResults,
+  distanceUnit: DistanceUnit = 'mi'
 ): TrainingPlan {
   const weeksToRace = calculateWeeksUntilRace(config.goal_date)
   const phase = config.goal_category === 'race'
@@ -511,7 +529,8 @@ export function generateTrainingPlan(
     phase,
     targetPace,
     config.goal_type,
-    raceDistance
+    raceDistance,
+    distanceUnit
   )
 
   const totalMiles = dailyPlan.reduce((sum, day) => sum + (day.distance_miles || 0), 0)

@@ -4,6 +4,7 @@ import Image from 'next/image'
 import type { TrainingPlan, DayPlan } from '@/lib/training/planner'
 import type { AnalysisResults } from '@/lib/training/analyzer'
 import IntensitySelector, { type IntensityPreference } from './IntensitySelector'
+import { displayDistance, distanceLabel, type DistanceUnit } from '@/lib/platforms/interface'
 
 interface TrainingPlanViewProps {
   plan: TrainingPlan
@@ -14,6 +15,7 @@ interface TrainingPlanViewProps {
   intensityPreference?: IntensityPreference
   onIntensityChange?: (value: IntensityPreference) => void
   platform?: 'garmin' | 'strava'
+  distanceUnit?: DistanceUnit
 }
 
 function getStatusColor(status: string): string {
@@ -77,7 +79,7 @@ function HealthMetricCard({
   )
 }
 
-function DayCard({ day }: { day: DayPlan }) {
+function DayCard({ day, unit = 'mi' }: { day: DayPlan; unit?: DistanceUnit }) {
   return (
     <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
       <div className="w-14 shrink-0 text-center">
@@ -90,7 +92,7 @@ function DayCard({ day }: { day: DayPlan }) {
         <div className="font-semibold text-gray-900">{day.title}</div>
         {day.distance_miles && (
           <div className="text-sm text-primary font-medium mt-0.5">
-            {day.distance_miles} miles
+            {displayDistance(day.distance_miles, unit)} {distanceLabel(unit)}
           </div>
         )}
         <div className="text-sm text-gray-600 mt-1">{day.description}</div>
@@ -111,6 +113,7 @@ export default function TrainingPlanView({
   intensityPreference = 'normal',
   onIntensityChange,
   platform,
+  distanceUnit = 'mi',
 }: TrainingPlanViewProps) {
   const generatedDate = new Date(generatedAt)
   const daysSinceGenerated = Math.floor((Date.now() - generatedDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -158,8 +161,8 @@ export default function TrainingPlanView({
       <div className="card p-6">
         <div className="flex flex-col sm:flex-row items-center gap-6">
           <div className="text-center sm:border-r sm:pr-6 sm:border-gray-200">
-            <div className="text-4xl font-bold text-primary">{plan.week_summary.total_miles}</div>
-            <div className="text-sm text-gray-500">miles this week</div>
+            <div className="text-4xl font-bold text-primary">{displayDistance(plan.week_summary.total_miles, distanceUnit, 0)}</div>
+            <div className="text-sm text-gray-500">{distanceLabel(distanceUnit)} this week</div>
           </div>
           <div className="flex-1 text-center sm:text-left">
             <div className="font-semibold text-gray-900">{plan.week_summary.focus}</div>
@@ -232,7 +235,7 @@ export default function TrainingPlanView({
         <h3 className="text-lg font-semibold text-gray-900 mb-4">This Week's Schedule</h3>
         <div className="space-y-3">
           {plan.daily_plan.map((day) => (
-            <DayCard key={day.day} day={day} />
+            <DayCard key={day.day} day={day} unit={distanceUnit} />
           ))}
         </div>
       </div>

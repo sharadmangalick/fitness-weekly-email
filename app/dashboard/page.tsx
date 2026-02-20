@@ -14,6 +14,7 @@ import { useCalculatedMileage } from '@/hooks/useCalculatedMileage'
 import type { TrainingPlan } from '@/lib/training/planner'
 import type { AnalysisResults } from '@/lib/training/analyzer'
 import { setUserId, trackPlatformConnection } from '@/components/GoogleAnalytics'
+import type { DistanceUnit } from '@/lib/platforms/interface'
 
 type OnboardingStatus = 'not_started' | 'platform_connected' | 'goals_set' | 'completed' | 'skipped'
 
@@ -70,6 +71,8 @@ export default function DashboardPage() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [connectionError, setConnectionError] = useState<{ message: string; flowId?: string } | null>(null)
   const [mileageBannerDismissed, setMileageBannerDismissed] = useState(false)
+  const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('mi')
+  const [stravaAutoDetected, setStravaAutoDetected] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createBrowserClient()
@@ -125,15 +128,22 @@ export default function DashboardPage() {
       // Set GA user ID for cross-session tracking
       setUserId(user.id)
 
-      // Load user profile including onboarding status
+      // Load user profile including onboarding status and distance unit
       const { data: profileData } = await (supabase as any)
         .from('user_profiles')
-        .select('onboarding_status')
+        .select('onboarding_status, distance_unit, preferred_platform')
         .eq('id', user.id)
         .single()
 
       const status = (profileData?.onboarding_status as OnboardingStatus) || 'not_started'
       setOnboardingStatus(status)
+      if (profileData?.distance_unit) {
+        setDistanceUnit(profileData.distance_unit as DistanceUnit)
+      }
+      // Check if user has Strava connection for auto-detection indicator
+      if (profileData?.preferred_platform === 'strava' && profileData?.distance_unit) {
+        setStravaAutoDetected(true)
+      }
 
       // Load connections
       const { data: connectionsData } = await supabase
@@ -549,8 +559,12 @@ export default function DashboardPage() {
                   </div>
                 )}
                 <div>
-                  <div className="text-sm text-gray-500">Weekly Mileage</div>
-                  <div className="font-semibold text-gray-900">{config.current_weekly_mileage} miles</div>
+                  <div className="text-sm text-gray-500">Weekly {distanceUnit === 'km' ? 'Volume' : 'Mileage'}</div>
+                  <div className="font-semibold text-gray-900">
+                    {distanceUnit === 'km'
+                      ? `${Math.round(config.current_weekly_mileage * 1.60934)} km`
+                      : `${config.current_weekly_mileage} miles`}
+                  </div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">Email Status</div>
@@ -672,6 +686,7 @@ export default function DashboardPage() {
                 intensityPreference={config?.intensity_preference || 'normal'}
                 onIntensityChange={handleIntensityChange}
                 platform={garminConnection ? 'garmin' : stravaConnection ? 'strava' : undefined}
+                distanceUnit={distanceUnit}
               />
             )}
 
@@ -696,7 +711,7 @@ export default function DashboardPage() {
 
         {/* Full Plan Overview - only show for race goals with a date */}
         {config && config.goal_category === 'race' && config.goal_date && connections.length > 0 && (
-          <FullPlanOverview />
+          <FullPlanOverview distanceUnit={distanceUnit} />
         )}
       </main>
 
@@ -704,6 +719,8 @@ export default function DashboardPage() {
       {showGoalWizard && (
         <GoalWizard
           initialConfig={config}
+          distanceUnit={distanceUnit}
+          stravaAutoDetected={stravaAutoDetected}
           onClose={() => setShowGoalWizard(false)}
           onSave={() => {
             setShowGoalWizard(false)

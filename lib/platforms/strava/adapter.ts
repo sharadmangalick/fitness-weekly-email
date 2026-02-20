@@ -56,10 +56,10 @@ export class StravaAdapter implements FitnessPlatform {
     }
 
     try {
-      const tokens = await exchangeCodeForTokens(code)
+      const result = await exchangeCodeForTokens(code)
       return {
         success: true,
-        tokens,
+        tokens: result.tokens,
       }
     } catch (error) {
       return {

@@ -3,11 +3,14 @@
 import { useState } from 'react'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import { trackGoalConfigured } from '@/components/GoogleAnalytics'
+import { displayDistance, distanceLabel, type DistanceUnit } from '@/lib/platforms/interface'
 
 interface GoalWizardProps {
   initialConfig?: any
   calculatedMileage?: number | null      // Pre-calculated from platform data
   mileageConfidence?: 'high' | 'medium' | 'low' | null  // Confidence in calculated mileage
+  distanceUnit?: DistanceUnit
+  stravaAutoDetected?: boolean  // Whether unit was auto-detected from Strava
   onClose: () => void
   onSave: () => void
   onPlanGenerate?: () => void  // Optional callback to trigger plan generation after saving
@@ -22,7 +25,7 @@ const RACE_DISTANCES: Record<string, number> = {
   'ultra': 50.0,
 }
 
-export default function GoalWizard({ initialConfig, calculatedMileage, mileageConfidence, onClose, onSave, onPlanGenerate, embedded = false }: GoalWizardProps) {
+export default function GoalWizard({ initialConfig, calculatedMileage, mileageConfidence, distanceUnit: initialDistanceUnit = 'mi', stravaAutoDetected = false, onClose, onSave, onPlanGenerate, embedded = false }: GoalWizardProps) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [generatingPlan, setGeneratingPlan] = useState(false)
@@ -53,16 +56,18 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
   const [longRunDay, setLongRunDay] = useState(initialConfig?.preferred_long_run_day || 'sunday')
   const [emailDay, setEmailDay] = useState(initialConfig?.email_day || 'sunday')
   const [emailEnabled, setEmailEnabled] = useState(initialConfig?.email_enabled ?? true)
+  const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>(initialDistanceUnit)
 
   const supabase = createBrowserClient()
 
-  // Calculate pace
+  // Calculate pace (always calculate from miles, then convert for display)
   const calculatePace = () => {
     const totalMinutes = goalHours * 60 + goalMinutes
-    const distance = RACE_DISTANCES[goalType] || 26.2
-    const pacePerMile = totalMinutes / distance
-    const mins = Math.floor(pacePerMile)
-    const secs = Math.round((pacePerMile - mins) * 60)
+    const distanceMiles = RACE_DISTANCES[goalType] || 26.2
+    const distanceInUnit = distanceUnit === 'km' ? distanceMiles * 1.60934 : distanceMiles
+    const pacePerUnit = totalMinutes / distanceInUnit
+    const mins = Math.floor(pacePerUnit)
+    const secs = Math.round((pacePerUnit - mins) * 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
@@ -96,6 +101,12 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
         .upsert(config, { onConflict: 'user_id' })
 
       if (error) throw error
+
+      // Save distance unit to user_profiles
+      await (supabase as any)
+        .from('user_profiles')
+        .update({ distance_unit: distanceUnit })
+        .eq('id', user.id)
 
       // Track goal configuration
       trackGoalConfigured()
@@ -170,11 +181,11 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
                   onChange={(e) => setGoalType(e.target.value)}
                   className="input-field"
                 >
-                  <option value="5k">5K (3.1 miles)</option>
-                  <option value="10k">10K (6.2 miles)</option>
-                  <option value="half_marathon">Half Marathon (13.1 miles)</option>
-                  <option value="marathon">Marathon (26.2 miles)</option>
-                  <option value="ultra">Ultra Marathon (50+ miles)</option>
+                  <option value="5k">5K ({displayDistance(3.1, distanceUnit)} {distanceLabel(distanceUnit)})</option>
+                  <option value="10k">10K ({displayDistance(6.2, distanceUnit)} {distanceLabel(distanceUnit)})</option>
+                  <option value="half_marathon">Half Marathon ({displayDistance(13.1, distanceUnit)} {distanceLabel(distanceUnit)})</option>
+                  <option value="marathon">Marathon ({displayDistance(26.2, distanceUnit)} {distanceLabel(distanceUnit)})</option>
+                  <option value="ultra">Ultra Marathon ({displayDistance(50, distanceUnit)}+ {distanceLabel(distanceUnit)})</option>
                 </select>
               </div>
 
@@ -200,7 +211,7 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
                   />
                 </div>
                 <div className="mt-2 p-3 bg-gray-50 rounded-lg text-sm">
-                  Target pace: <strong className="text-primary">{calculatePace()}/mile</strong>
+                  Target pace: <strong className="text-primary">{calculatePace()}{distanceUnit === 'km' ? '/km' : '/mile'}</strong>
                 </div>
               </div>
 
@@ -236,14 +247,17 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
               {goalType === 'build_mileage' && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Target Weekly Mileage
+                    Target Weekly {distanceUnit === 'km' ? 'Volume (km)' : 'Mileage'}
                   </label>
                   <input
                     type="number"
                     min="0"
                     max="150"
-                    value={targetMileage}
-                    onChange={(e) => setTargetMileage(e.target.value === '' ? 0 : parseInt(e.target.value))}
+                    value={distanceUnit === 'km' ? Math.round(targetMileage * 1.60934) : targetMileage}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? 0 : parseInt(e.target.value)
+                      setTargetMileage(distanceUnit === 'km' ? Math.round(val / 1.60934) : val)
+                    }}
                     className="input-field"
                   />
                 </div>
@@ -260,14 +274,18 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Current Weekly Mileage
+              Current Weekly {distanceUnit === 'km' ? 'Volume (km)' : 'Mileage'}
             </label>
             <input
               type="number"
               min="0"
               max="150"
-              value={currentMileage}
-              onChange={(e) => setCurrentMileage(e.target.value === '' ? 0 : parseInt(e.target.value))}
+              value={distanceUnit === 'km' ? Math.round(currentMileage * 1.60934) : currentMileage}
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : parseInt(e.target.value)
+                // Always store in miles internally
+                setCurrentMileage(distanceUnit === 'km' ? Math.round(val / 1.60934) : val)
+              }}
               className="input-field"
             />
             {calculatedMileage && !initialConfig?.current_weekly_mileage && (
@@ -310,7 +328,40 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
       {/* Step 3: Email Preferences */}
       {step === 3 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Email Preferences</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Preferences</h3>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Distance Unit
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDistanceUnit('mi')}
+                className={`flex-1 py-2 px-4 rounded-lg border-2 text-center font-medium transition-all ${
+                  distanceUnit === 'mi'
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                Miles
+              </button>
+              <button
+                type="button"
+                onClick={() => setDistanceUnit('km')}
+                className={`flex-1 py-2 px-4 rounded-lg border-2 text-center font-medium transition-all ${
+                  distanceUnit === 'km'
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                Kilometers
+              </button>
+            </div>
+            {stravaAutoDetected && (
+              <p className="text-xs text-gray-500 mt-1">(Auto-detected from Strava)</p>
+            )}
+          </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -359,8 +410,8 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-gray-600">Weekly Mileage</span>
-                <span className="font-medium">{currentMileage} miles</span>
+                <span className="text-gray-600">Weekly {distanceUnit === 'km' ? 'Volume' : 'Mileage'}</span>
+                <span className="font-medium">{displayDistance(currentMileage, distanceUnit, 0)} {distanceLabel(distanceUnit)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Email Day</span>

@@ -23,6 +23,7 @@ export interface StravaAthlete {
   firstname: string
   lastname: string
   profile: string
+  measurement_preference?: string  // 'feet' or 'meters'
 }
 
 export interface StravaActivity {
@@ -90,7 +91,12 @@ export function getStravaAuthUrl(state?: string): string {
 /**
  * Exchange authorization code for access tokens
  */
-export async function exchangeCodeForTokens(code: string, flowId?: string): Promise<StravaTokens> {
+export interface StravaTokenExchangeResult {
+  tokens: StravaTokens
+  measurement_preference?: string  // 'feet' or 'meters'
+}
+
+export async function exchangeCodeForTokens(code: string, flowId?: string): Promise<StravaTokenExchangeResult> {
   const clientId = process.env.STRAVA_CLIENT_ID
   const clientSecret = process.env.STRAVA_CLIENT_SECRET
 
@@ -150,10 +156,13 @@ export async function exchangeCodeForTokens(code: string, flowId?: string): Prom
   })
 
   return {
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    expires_at: data.expires_at,
-    athlete_id: data.athlete.id,
+    tokens: {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: data.expires_at,
+      athlete_id: data.athlete.id,
+    },
+    measurement_preference: data.athlete?.measurement_preference,
   }
 }
 
