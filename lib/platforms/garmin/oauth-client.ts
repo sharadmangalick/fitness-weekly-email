@@ -303,7 +303,7 @@ export class GarminOAuthClient {
 
       return response?.activities || []
     } catch (error) {
-      log('error', 'Failed to fetch Garmin activities', { error, days })
+      log('error', 'Failed to fetch Garmin activities', { error: String(error), days })
       return []
     }
   }
@@ -328,7 +328,7 @@ export class GarminOAuthClient {
         data: item,
       }))
     } catch (error) {
-      log('error', 'Failed to fetch Garmin sleep data', { error, days })
+      log('error', 'Failed to fetch Garmin sleep data', { error: String(error), days })
       return []
     }
   }
@@ -353,7 +353,7 @@ export class GarminOAuthClient {
         data: item,
       }))
     } catch (error) {
-      log('error', 'Failed to fetch Garmin daily summaries', { error, days })
+      log('error', 'Failed to fetch Garmin daily summaries', { error: String(error), days })
       return []
     }
   }
@@ -378,7 +378,7 @@ export class GarminOAuthClient {
         data: item,
       }))
     } catch (error) {
-      log('error', 'Failed to fetch Garmin heart rate data', { error, days })
+      log('error', 'Failed to fetch Garmin heart rate data', { error: String(error), days })
       return []
     }
   }
@@ -399,7 +399,7 @@ export class GarminOAuthClient {
 
       return response?.stressDetails || []
     } catch (error) {
-      log('error', 'Failed to fetch Garmin stress data', { error, days })
+      log('error', 'Failed to fetch Garmin stress data', { error: String(error), days })
       return []
     }
   }
@@ -422,7 +422,7 @@ export class GarminOAuthClient {
       if (Array.isArray(response)) return response
       return response?.bodyBatteryReadings || response?.bodyBattery || []
     } catch (error) {
-      log('error', 'Failed to fetch Garmin body battery data', { error, days })
+      log('error', 'Failed to fetch Garmin body battery data', { error: String(error), days })
       return []
     }
   }
@@ -443,7 +443,7 @@ export class GarminOAuthClient {
 
       return response?.epochs || []
     } catch (error) {
-      log('error', 'Failed to fetch Garmin epochs', { error, days })
+      log('error', 'Failed to fetch Garmin epochs', { error: String(error), days })
       return []
     }
   }
@@ -464,7 +464,7 @@ export class GarminOAuthClient {
 
       return response?.hrv || response?.hrvSummaries || []
     } catch (error) {
-      log('error', 'Failed to fetch Garmin HRV data', { error, days })
+      log('error', 'Failed to fetch Garmin HRV data', { error: String(error), days })
       return []
     }
   }
@@ -479,7 +479,7 @@ export class GarminOAuthClient {
       const response = await this.request<GarminVO2MaxRaw>('/vo2Max')
       return response
     } catch (error) {
-      log('error', 'Failed to fetch Garmin VO2 max data', { error })
+      log('error', 'Failed to fetch Garmin VO2 max data', { error: String(error) })
       return null
     }
   }
