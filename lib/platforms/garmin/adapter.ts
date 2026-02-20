@@ -216,7 +216,12 @@ export class GarminAdapter implements FitnessPlatform {
 
   async getAllData(tokens: PlatformTokens, days: number): Promise<AllPlatformData> {
     await this.ensureAuthenticated(tokens)
-    const raw = await this.oauthClient!.fetchAll(days)
+
+    // fetchAll returns pull-available types; fetch push-only types separately
+    const [raw, heartRate] = await Promise.all([
+      this.oauthClient!.fetchAll(days),
+      this.oauthClient!.getHeartRateData(days),
+    ])
 
     return {
       activities: raw.activities
@@ -225,15 +230,13 @@ export class GarminAdapter implements FitnessPlatform {
       sleep: raw.sleep
         .map(({ date, data }) => this.normalizeSleep(date, data))
         .filter((s): s is SleepData => s !== null),
-      heartRate: raw.heartRate
+      heartRate: heartRate
         .map(({ date, data }) => this.normalizeHeartRate(date, data))
         .filter((hr): hr is HeartRateData => hr !== null),
       dailySummaries: raw.dailySummaries.map(({ date, data }) =>
         this.normalizeDailySummary(date, data)
       ),
-      vo2max: raw.vo2max
-        .map(({ date, data }) => this.normalizeVO2Max(date, data))
-        .filter((v): v is VO2MaxData => v !== null),
+      vo2max: [],
     }
   }
 }

@@ -277,13 +277,19 @@ export class GarminOAuthClient {
   }
 
   /**
-   * Get Unix timestamp range for queries.
-   * Used by most Health API pull endpoints (activities, sleeps, dailies, stressDetails).
+   * Get 24-hour chunk ranges for the specified number of days.
+   * Garmin pull API enforces a max 86400-second (24h) window per request.
+   * Returns an array of { start, end } pairs to iterate over.
    */
-  private getUnixTimeRange(days: number): { start: number; end: number } {
-    const end = Math.floor(Date.now() / 1000)
-    const start = end - days * 86400
-    return { start, end }
+  private get24hChunks(days: number): { start: number; end: number }[] {
+    const now = Math.floor(Date.now() / 1000)
+    const chunks: { start: number; end: number }[] = []
+    for (let d = 0; d < days; d++) {
+      const end = now - d * 86400
+      const start = end - 86400
+      chunks.push({ start, end })
+    }
+    return chunks
   }
 
   /**
@@ -294,18 +300,22 @@ export class GarminOAuthClient {
    * Returns all activity types — filter for RUNNING in the adapter.
    */
   async getActivities(days: number): Promise<GarminActivityRaw[]> {
-    const { start, end } = this.getUnixTimeRange(days)
+    const chunks = this.get24hChunks(days)
+    const all: GarminActivityRaw[] = []
 
-    try {
-      const response = await this.request<any>(
-        `/activities?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
-      )
-
-      return response?.activities || []
-    } catch (error) {
-      log('error', 'Failed to fetch Garmin activities', { error: String(error), days })
-      return []
+    for (const { start, end } of chunks) {
+      try {
+        const response = await this.request<any>(
+          `/activities?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
+        )
+        const items = response?.activities || []
+        all.push(...items)
+      } catch (error) {
+        log('error', 'Failed to fetch Garmin activities', { error: String(error), days })
+      }
     }
+
+    return all
   }
 
   /**
@@ -315,22 +325,22 @@ export class GarminOAuthClient {
    * Uses uploadStartTimeInSeconds / uploadEndTimeInSeconds params.
    */
   async getSleepData(days: number): Promise<{ date: string; data: GarminSleepRaw }[]> {
-    const { start, end } = this.getUnixTimeRange(days)
+    const chunks = this.get24hChunks(days)
+    const all: { date: string; data: GarminSleepRaw }[] = []
 
-    try {
-      const response = await this.request<any>(
-        `/sleeps?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
-      )
-
-      const items: GarminSleepRaw[] = response?.sleeps || []
-      return items.map(item => ({
-        date: item.calendarDate || '',
-        data: item,
-      }))
-    } catch (error) {
-      log('error', 'Failed to fetch Garmin sleep data', { error: String(error), days })
-      return []
+    for (const { start, end } of chunks) {
+      try {
+        const response = await this.request<any>(
+          `/sleeps?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
+        )
+        const items: GarminSleepRaw[] = response?.sleeps || []
+        all.push(...items.map(item => ({ date: item.calendarDate || '', data: item })))
+      } catch (error) {
+        log('error', 'Failed to fetch Garmin sleep data', { error: String(error), days })
+      }
     }
+
+    return all
   }
 
   /**
@@ -340,22 +350,22 @@ export class GarminOAuthClient {
    * Uses uploadStartTimeInSeconds / uploadEndTimeInSeconds params.
    */
   async getDailySummaries(days: number): Promise<{ date: string; data: GarminDailyStatsRaw }[]> {
-    const { start, end } = this.getUnixTimeRange(days)
+    const chunks = this.get24hChunks(days)
+    const all: { date: string; data: GarminDailyStatsRaw }[] = []
 
-    try {
-      const response = await this.request<any>(
-        `/dailies?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
-      )
-
-      const items: GarminDailyStatsRaw[] = response?.dailies || []
-      return items.map(item => ({
-        date: item.calendarDate || '',
-        data: item,
-      }))
-    } catch (error) {
-      log('error', 'Failed to fetch Garmin daily summaries', { error: String(error), days })
-      return []
+    for (const { start, end } of chunks) {
+      try {
+        const response = await this.request<any>(
+          `/dailies?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
+        )
+        const items: GarminDailyStatsRaw[] = response?.dailies || []
+        all.push(...items.map(item => ({ date: item.calendarDate || '', data: item })))
+      } catch (error) {
+        log('error', 'Failed to fetch Garmin daily summaries', { error: String(error), days })
+      }
     }
+
+    return all
   }
 
   /**
@@ -390,18 +400,21 @@ export class GarminOAuthClient {
    * Uses uploadStartTimeInSeconds / uploadEndTimeInSeconds params.
    */
   async getStressData(days: number): Promise<any[]> {
-    const { start, end } = this.getUnixTimeRange(days)
+    const chunks = this.get24hChunks(days)
+    const all: any[] = []
 
-    try {
-      const response = await this.request<any>(
-        `/stressDetails?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
-      )
-
-      return response?.stressDetails || []
-    } catch (error) {
-      log('error', 'Failed to fetch Garmin stress data', { error: String(error), days })
-      return []
+    for (const { start, end } of chunks) {
+      try {
+        const response = await this.request<any>(
+          `/stressDetails?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
+        )
+        all.push(...(response?.stressDetails || []))
+      } catch (error) {
+        log('error', 'Failed to fetch Garmin stress data', { error: String(error), days })
+      }
     }
+
+    return all
   }
 
   /**
@@ -434,18 +447,21 @@ export class GarminOAuthClient {
    * Uses uploadStartTimeInSeconds / uploadEndTimeInSeconds params.
    */
   async getEpochs(days: number): Promise<any[]> {
-    const { start, end } = this.getUnixTimeRange(days)
+    const chunks = this.get24hChunks(days)
+    const all: any[] = []
 
-    try {
-      const response = await this.request<any>(
-        `/epochs?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
-      )
-
-      return response?.epochs || []
-    } catch (error) {
-      log('error', 'Failed to fetch Garmin epochs', { error: String(error), days })
-      return []
+    for (const { start, end } of chunks) {
+      try {
+        const response = await this.request<any>(
+          `/epochs?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
+        )
+        all.push(...(response?.epochs || []))
+      } catch (error) {
+        log('error', 'Failed to fetch Garmin epochs', { error: String(error), days })
+      }
     }
+
+    return all
   }
 
   /**
@@ -455,18 +471,21 @@ export class GarminOAuthClient {
    * Uses uploadStartTimeInSeconds / uploadEndTimeInSeconds params.
    */
   async getHRV(days: number): Promise<any[]> {
-    const { start, end } = this.getUnixTimeRange(days)
+    const chunks = this.get24hChunks(days)
+    const all: any[] = []
 
-    try {
-      const response = await this.request<any>(
-        `/hrv?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
-      )
-
-      return response?.hrv || response?.hrvSummaries || []
-    } catch (error) {
-      log('error', 'Failed to fetch Garmin HRV data', { error: String(error), days })
-      return []
+    for (const { start, end } of chunks) {
+      try {
+        const response = await this.request<any>(
+          `/hrv?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
+        )
+        all.push(...(response?.hrv || response?.hrvSummaries || []))
+      } catch (error) {
+        log('error', 'Failed to fetch Garmin HRV data', { error: String(error), days })
+      }
     }
+
+    return all
   }
 
   /**
@@ -485,17 +504,15 @@ export class GarminOAuthClient {
   }
 
   /**
-   * Fetch all data types for the specified number of days
+   * Fetch all pull-available data types for the specified number of days.
+   * Note: heartRates, bodyBattery, and vo2Max are push-only (404 on pull).
    */
   async fetchAll(days: number) {
-    const [activities, sleep, heartRate, dailySummaries, stress, bodyBattery, vo2max, epochs, hrv] = await Promise.allSettled([
+    const [activities, sleep, dailySummaries, stress, epochs, hrv] = await Promise.allSettled([
       this.getActivities(days),
       this.getSleepData(days),
-      this.getHeartRateData(days),
       this.getDailySummaries(days),
       this.getStressData(days),
-      this.getBodyBattery(days),
-      this.getVO2Max(),
       this.getEpochs(days),
       this.getHRV(days),
     ])
@@ -503,11 +520,8 @@ export class GarminOAuthClient {
     return {
       activities: activities.status === 'fulfilled' ? activities.value : [],
       sleep: sleep.status === 'fulfilled' ? sleep.value : [],
-      heartRate: heartRate.status === 'fulfilled' ? heartRate.value : [],
       dailySummaries: dailySummaries.status === 'fulfilled' ? dailySummaries.value : [],
       stress: stress.status === 'fulfilled' ? stress.value : [],
-      bodyBattery: bodyBattery.status === 'fulfilled' ? bodyBattery.value : [],
-      vo2max: vo2max.status === 'fulfilled' && vo2max.value ? [{ date: new Date().toISOString().split('T')[0], data: vo2max.value }] : [],
       epochs: epochs.status === 'fulfilled' ? epochs.value : [],
       hrv: hrv.status === 'fulfilled' ? hrv.value : [],
     }

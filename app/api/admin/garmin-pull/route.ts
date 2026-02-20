@@ -79,11 +79,8 @@ export async function POST(request: NextRequest) {
     const summary = {
       activities: Array.isArray(data.activities) ? data.activities.length : 0,
       sleep: Array.isArray(data.sleep) ? data.sleep.length : 0,
-      heartRate: Array.isArray(data.heartRate) ? data.heartRate.length : 0,
       dailySummaries: Array.isArray(data.dailySummaries) ? data.dailySummaries.length : 0,
       stress: Array.isArray(data.stress) ? data.stress.length : 0,
-      bodyBattery: Array.isArray(data.bodyBattery) ? data.bodyBattery.length : 0,
-      vo2max: Array.isArray(data.vo2max) ? data.vo2max.length : 0,
       epochs: Array.isArray(data.epochs) ? data.epochs.length : 0,
       hrv: Array.isArray(data.hrv) ? data.hrv.length : 0,
     }
