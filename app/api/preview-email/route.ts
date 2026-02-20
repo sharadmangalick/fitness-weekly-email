@@ -54,6 +54,14 @@ export async function GET() {
         .eq('user_id', user.id)
         .single()
 
+      // Get platform connection to determine data source
+      const { data: connection } = await (adminClient as any)
+        .from('platform_connections')
+        .select('platform')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single()
+
       // If we have all the data, use the real plan
       if (cachedPlan && profile && config) {
         // Note: For preview, we pass null for platformData since we don't fetch it here
@@ -64,7 +72,8 @@ export async function GET() {
           cachedPlan.analysis_json,
           cachedPlan.plan_json,
           null, // platformData not fetched for preview
-          undefined
+          undefined,
+          connection?.platform as 'garmin' | 'strava' | undefined
         )
 
         return new NextResponse(html, {

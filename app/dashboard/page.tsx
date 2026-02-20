@@ -671,6 +671,7 @@ export default function DashboardPage() {
                 refreshing={planLoading}
                 intensityPreference={config?.intensity_preference || 'normal'}
                 onIntensityChange={handleIntensityChange}
+                platform={garminConnection ? 'garmin' : stravaConnection ? 'strava' : undefined}
               />
             )}
 

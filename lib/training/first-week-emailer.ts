@@ -83,7 +83,8 @@ export function generateFirstWeekEmailHtml(
   analysis: AnalysisResults,
   plan: TrainingPlan,
   platformData: AllPlatformData | null,
-  dashboardUrl: string
+  dashboardUrl: string,
+  platform?: 'garmin' | 'strava'
 ): string {
   const { dayName, daysRemaining } = getTodayInfo()
   const weeksToRace = calculateWeeksUntilRace(config.goal_date)
@@ -239,7 +240,7 @@ export function generateFirstWeekEmailHtml(
                 Questions? Just reply to this email.
               </p>
               <p style="color: #bbb; font-size: 11px; margin: 0;">
-                RunPlan.fun - Personalized training, powered by your data
+                ${platform === 'garmin' ? 'Training plan derived in part from Garmin device-sourced data.<br>' : ''}RunPlan.fun - Personalized training, powered by your data
               </p>
             </td>
           </tr>

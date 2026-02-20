@@ -128,7 +128,8 @@ export async function POST(request: NextRequest) {
       analysis,
       plan,
       platformData,
-      dashboardUrl
+      dashboardUrl,
+      connection.platform as 'garmin' | 'strava'
     )
     const emailSubject = generateFirstWeekEmailSubject(profile.name)
 

@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import type { TrainingPlan, DayPlan } from '@/lib/training/planner'
 import type { AnalysisResults } from '@/lib/training/analyzer'
 import IntensitySelector, { type IntensityPreference } from './IntensitySelector'
@@ -12,6 +13,7 @@ interface TrainingPlanViewProps {
   refreshing?: boolean
   intensityPreference?: IntensityPreference
   onIntensityChange?: (value: IntensityPreference) => void
+  platform?: 'garmin' | 'strava'
 }
 
 function getStatusColor(status: string): string {
@@ -108,6 +110,7 @@ export default function TrainingPlanView({
   refreshing,
   intensityPreference = 'normal',
   onIntensityChange,
+  platform,
 }: TrainingPlanViewProps) {
   const generatedDate = new Date(generatedAt)
   const daysSinceGenerated = Math.floor((Date.now() - generatedDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -178,7 +181,14 @@ export default function TrainingPlanView({
 
       {/* Health Snapshot */}
       <div className="card p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Health Snapshot</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Health Snapshot</h3>
+          {platform === 'garmin' && (
+            <div className="flex items-center gap-1.5">
+              <Image src="/garmin-tag-black.png" alt="Garmin" width={60} height={16} className="h-3.5 w-auto opacity-60" />
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {analysis.resting_hr.available && (
             <HealthMetricCard
@@ -230,7 +240,10 @@ export default function TrainingPlanView({
       {/* Coaching Notes */}
       {plan.coaching_notes.length > 0 && (
         <div className="card p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Coach's Notes</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Coach&apos;s Notes</h3>
+          {platform === 'garmin' && (
+            <p className="text-xs text-gray-400 mb-3">Insights derived in part from Garmin device-sourced data.</p>
+          )}
           <div className="space-y-3">
             {plan.coaching_notes.map((note, index) => (
               <div key={index} className="flex gap-3 pl-4 border-l-3 border-primary">
