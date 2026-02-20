@@ -428,6 +428,48 @@ export class GarminOAuthClient {
   }
 
   /**
+   * Fetch epoch summaries for the specified number of days.
+   *
+   * Garmin Health API endpoint: /epochs
+   * Uses uploadStartTimeInSeconds / uploadEndTimeInSeconds params.
+   */
+  async getEpochs(days: number): Promise<any[]> {
+    const { start, end } = this.getUnixTimeRange(days)
+
+    try {
+      const response = await this.request<any>(
+        `/epochs?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
+      )
+
+      return response?.epochs || []
+    } catch (error) {
+      log('error', 'Failed to fetch Garmin epochs', { error, days })
+      return []
+    }
+  }
+
+  /**
+   * Fetch HRV (Heart Rate Variability) data for the specified number of days.
+   *
+   * Garmin Health API endpoint: /hrv
+   * Uses uploadStartTimeInSeconds / uploadEndTimeInSeconds params.
+   */
+  async getHRV(days: number): Promise<any[]> {
+    const { start, end } = this.getUnixTimeRange(days)
+
+    try {
+      const response = await this.request<any>(
+        `/hrv?uploadStartTimeInSeconds=${start}&uploadEndTimeInSeconds=${end}`
+      )
+
+      return response?.hrv || response?.hrvSummaries || []
+    } catch (error) {
+      log('error', 'Failed to fetch Garmin HRV data', { error, days })
+      return []
+    }
+  }
+
+  /**
    * Fetch VO2 max data
    *
    * Garmin Health API endpoint: /vo2Max
@@ -446,7 +488,7 @@ export class GarminOAuthClient {
    * Fetch all data types for the specified number of days
    */
   async fetchAll(days: number) {
-    const [activities, sleep, heartRate, dailySummaries, stress, bodyBattery, vo2max] = await Promise.allSettled([
+    const [activities, sleep, heartRate, dailySummaries, stress, bodyBattery, vo2max, epochs, hrv] = await Promise.allSettled([
       this.getActivities(days),
       this.getSleepData(days),
       this.getHeartRateData(days),
@@ -454,6 +496,8 @@ export class GarminOAuthClient {
       this.getStressData(days),
       this.getBodyBattery(days),
       this.getVO2Max(),
+      this.getEpochs(days),
+      this.getHRV(days),
     ])
 
     return {
@@ -464,6 +508,8 @@ export class GarminOAuthClient {
       stress: stress.status === 'fulfilled' ? stress.value : [],
       bodyBattery: bodyBattery.status === 'fulfilled' ? bodyBattery.value : [],
       vo2max: vo2max.status === 'fulfilled' && vo2max.value ? [{ date: new Date().toISOString().split('T')[0], data: vo2max.value }] : [],
+      epochs: epochs.status === 'fulfilled' ? epochs.value : [],
+      hrv: hrv.status === 'fulfilled' ? hrv.value : [],
     }
   }
 }
