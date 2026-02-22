@@ -67,6 +67,7 @@ function getRaceName(goalType: string, goalTarget: string | null): string {
     'ultra': 'Ultra',
     'custom': 'Race',
     'build_mileage': 'Mileage Building',
+    'get_faster': 'Speed Training',
     'maintain_fitness': 'Fitness Maintenance',
     'base_building': 'Base Building',
     'return_from_injury': 'Return to Running',
@@ -242,7 +243,7 @@ export function generateFirstWeekEmailHtml(
                 Questions? Just reply to this email.
               </p>
               <p style="color: #bbb; font-size: 11px; margin: 0;">
-                ${platform === 'garmin' ? 'Training plan derived in part from Garmin device-sourced data.<br>' : ''}RunPlan.fun - Personalized training, powered by your data
+                ${platform === 'garmin' ? 'Insights derived in part from Garmin device-sourced data.<br>' : ''}RunPlan.fun - Personalized training, powered by your data
               </p>
             </td>
           </tr>

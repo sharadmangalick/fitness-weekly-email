@@ -115,6 +115,7 @@ export class GarminAdapter implements FitnessPlatform {
       perceived_exertion: raw.perceivedExertion,
       aerobic_training_effect: raw.aerobicTrainingEffect,
       anaerobic_training_effect: raw.anaerobicTrainingEffect,
+      device_name: raw.deviceName,
     }
   }
 
@@ -223,10 +224,27 @@ export class GarminAdapter implements FitnessPlatform {
       this.oauthClient!.getHeartRateData(days),
     ])
 
+    const activities = raw.activities
+      .filter(r => r.activityType?.toUpperCase() === 'RUNNING')
+      .map((r) => this.normalizeActivity(r))
+
+    // Compute primary device name from most frequently seen device across activities
+    const deviceCounts = new Map<string, number>()
+    for (const act of raw.activities) {
+      if (act.deviceName) {
+        deviceCounts.set(act.deviceName, (deviceCounts.get(act.deviceName) || 0) + 1)
+      }
+    }
+    let primaryDeviceName: string | undefined
+    if (deviceCounts.size > 0) {
+      const mostFrequent = Array.from(deviceCounts.entries()).sort((a, b) => b[1] - a[1])[0][0]
+      primaryDeviceName = mostFrequent.toLowerCase().startsWith('garmin')
+        ? mostFrequent
+        : `Garmin ${mostFrequent}`
+    }
+
     return {
-      activities: raw.activities
-        .filter(r => r.activityType?.toUpperCase() === 'RUNNING')
-        .map((r) => this.normalizeActivity(r)),
+      activities,
       sleep: raw.sleep
         .map(({ date, data }) => this.normalizeSleep(date, data))
         .filter((s): s is SleepData => s !== null),
@@ -237,6 +255,7 @@ export class GarminAdapter implements FitnessPlatform {
         this.normalizeDailySummary(date, data)
       ),
       vo2max: [],
+      primaryDeviceName,
     }
   }
 }

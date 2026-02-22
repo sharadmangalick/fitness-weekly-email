@@ -18,6 +18,7 @@ export interface GarminActivityRaw {
   perceivedExertion?: number
   aerobicTrainingEffect?: number
   anaerobicTrainingEffect?: number
+  deviceName?: string
 }
 
 export interface GarminSleepRaw {

@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import type { TrainingPlan, DayPlan } from '@/lib/training/planner'
 import type { AnalysisResults } from '@/lib/training/analyzer'
+import type { Insight } from '@/lib/training/adaptations'
 import IntensitySelector, { type IntensityPreference } from './IntensitySelector'
 import { displayDistance, distanceLabel, type DistanceUnit } from '@/lib/platforms/interface'
 
@@ -16,6 +17,7 @@ interface TrainingPlanViewProps {
   onIntensityChange?: (value: IntensityPreference) => void
   platform?: 'garmin' | 'strava'
   distanceUnit?: DistanceUnit
+  insights?: Insight[]
 }
 
 function getStatusColor(status: string): string {
@@ -114,6 +116,7 @@ export default function TrainingPlanView({
   onIntensityChange,
   platform,
   distanceUnit = 'mi',
+  insights,
 }: TrainingPlanViewProps) {
   const generatedDate = new Date(generatedAt)
   const daysSinceGenerated = Math.floor((Date.now() - generatedDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -182,52 +185,102 @@ export default function TrainingPlanView({
         />
       )}
 
-      {/* Health Snapshot - only show when at least one metric has data */}
-      {(analysis.resting_hr.available || analysis.body_battery.available || analysis.sleep.available || analysis.stress.available) && (
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Health Snapshot</h3>
-            {platform === 'garmin' && (
-              <div className="flex items-center gap-1.5">
-                <Image src="/garmin-tag-black.png" alt="Garmin" width={60} height={16} className="h-3.5 w-auto opacity-60" />
+      {/* Health Snapshot */}
+      {(() => {
+        const hasAnyMetric = analysis.resting_hr.available || analysis.body_battery.available || analysis.sleep.available || analysis.stress.available
+        if (hasAnyMetric) {
+          return (
+            <div className="card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Health Snapshot</h3>
+                {platform === 'garmin' && (
+                  <div className="flex flex-col items-end gap-0.5">
+                    <Image src="/garmin-tag-black.png" alt="Garmin" width={60} height={16} className="h-3.5 w-auto opacity-60" />
+                    <span className="text-[10px] text-gray-400">Data provided by Garmin</span>
+                  </div>
+                )}
               </div>
-            )}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {analysis.resting_hr.available && (
+                  <HealthMetricCard
+                    label="Resting HR"
+                    value={`${analysis.resting_hr.current} bpm`}
+                    detail={platform === 'strava'
+                      ? '(estimated from activities)'
+                      : analysis.resting_hr.change
+                        ? `${analysis.resting_hr.change > 0 ? '+' : ''}${analysis.resting_hr.change} from baseline`
+                        : undefined}
+                    status={analysis.resting_hr.status}
+                  />
+                )}
+                {analysis.body_battery.available && (
+                  <HealthMetricCard
+                    label="Body Battery"
+                    value={`${analysis.body_battery.current_wake}`}
+                    detail={`${(analysis.body_battery.trend || '').charAt(0).toUpperCase()}${(analysis.body_battery.trend || '').slice(1)}`}
+                    status={analysis.body_battery.status}
+                  />
+                )}
+                {analysis.sleep.available && (
+                  <HealthMetricCard
+                    label="Sleep"
+                    value={`${analysis.sleep.avg_hours} hrs`}
+                    detail={`${analysis.sleep.under_6h_pct}% nights under 6h`}
+                    status={analysis.sleep.status}
+                  />
+                )}
+                {analysis.stress.available && (
+                  <HealthMetricCard
+                    label="Stress"
+                    value={`${analysis.stress.avg}`}
+                    detail={`${analysis.stress.high_stress_pct}% high stress days`}
+                    status={analysis.stress.status}
+                  />
+                )}
+              </div>
+            </div>
+          )
+        }
+        // Empty state: no health metrics available
+        if (platform === 'strava') {
+          return (
+            <div className="card p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Health Snapshot</h3>
+              <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-800">
+                <p>Strava provides activity data but not daily health metrics like resting heart rate, sleep, or body battery. Your plan adapts based on your training patterns instead.</p>
+                <p className="mt-2 text-blue-600">Connect a Garmin device for full health-based personalization.</p>
+              </div>
+            </div>
+          )
+        }
+        return (
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Health Snapshot</h3>
+            <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
+              Your health data is syncing. Metrics typically appear within 24-48 hours of wearing your device.
+            </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {analysis.resting_hr.available && (
-              <HealthMetricCard
-                label="Resting HR"
-                value={`${analysis.resting_hr.current} bpm`}
-                detail={analysis.resting_hr.change
-                  ? `${analysis.resting_hr.change > 0 ? '+' : ''}${analysis.resting_hr.change} from baseline`
-                  : undefined}
-                status={analysis.resting_hr.status}
-              />
-            )}
-            {analysis.body_battery.available && (
-              <HealthMetricCard
-                label="Body Battery"
-                value={`${analysis.body_battery.current_wake}`}
-                detail={`${(analysis.body_battery.trend || '').charAt(0).toUpperCase()}${(analysis.body_battery.trend || '').slice(1)}`}
-                status={analysis.body_battery.status}
-              />
-            )}
-            {analysis.sleep.available && (
-              <HealthMetricCard
-                label="Sleep"
-                value={`${analysis.sleep.avg_hours} hrs`}
-                detail={`${analysis.sleep.under_6h_pct}% nights under 6h`}
-                status={analysis.sleep.status}
-              />
-            )}
-            {analysis.stress.available && (
-              <HealthMetricCard
-                label="Stress"
-                value={`${analysis.stress.avg}`}
-                detail={`${analysis.stress.high_stress_pct}% high stress days`}
-                status={analysis.stress.status}
-              />
-            )}
+        )
+      })()}
+
+      {/* This Week's Adjustments */}
+      {insights && insights.length > 0 && (
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">This Week&apos;s Adjustments</h3>
+          <div className="space-y-3">
+            {insights.map((insight, index) => {
+              const colorMap = {
+                warning: 'bg-yellow-50 border-yellow-400 text-yellow-800',
+                info: 'bg-blue-50 border-blue-400 text-blue-800',
+                positive: 'bg-green-50 border-green-400 text-green-800',
+              }
+              const colors = colorMap[insight.severity] || colorMap.info
+              return (
+                <div key={index} className={`p-3 rounded-lg border-l-4 ${colors}`}>
+                  <p className="text-sm">{insight.message}</p>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

@@ -46,6 +46,7 @@ export interface Activity {
   perceived_exertion?: number      // User-logged RPE (1-10 scale)
   aerobic_training_effect?: number // Garmin's aerobic training effect (1-5)
   anaerobic_training_effect?: number // Garmin's anaerobic training effect (1-5)
+  device_name?: string             // Device that recorded the activity (e.g. "Forerunner 265")
 }
 
 export interface SleepData {
@@ -93,6 +94,7 @@ export interface AllPlatformData {
   heartRate: HeartRateData[]
   dailySummaries: DailySummary[]
   vo2max?: VO2MaxData[]
+  primaryDeviceName?: string  // Most frequently used device (e.g. "Garmin Forerunner 265")
 }
 
 // Connect result

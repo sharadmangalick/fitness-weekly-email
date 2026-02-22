@@ -7,6 +7,7 @@
 
 import type { TrainingPlan } from './planner'
 import type { AnalysisResults } from './analyzer'
+import type { Insight } from './adaptations'
 import type { TrainingConfig, UserProfile } from '../database.types'
 import type { AllPlatformData, Activity, DistanceUnit } from '../platforms/interface'
 import { displayDistance, distanceLabel, distanceLabelShort, formatPaceForUnit, paceLabel } from '../platforms/interface'
@@ -73,7 +74,7 @@ function determineRecoveryStatus(analysis: AnalysisResults): RecoveryStatus {
   }
 }
 
-function buildHealthSnapshot(analysis: AnalysisResults): HealthMetric[] {
+function buildHealthSnapshot(analysis: AnalysisResults, platform?: 'garmin' | 'strava'): HealthMetric[] {
   const snapshot: HealthMetric[] = []
 
   if (analysis.resting_hr.available) {
@@ -82,8 +83,8 @@ function buildHealthSnapshot(analysis: AnalysisResults): HealthMetric[] {
       : ''
     snapshot.push({
       metric: 'Resting HR',
-      value: `${analysis.resting_hr.current || 'N/A'} bpm`,
-      detail: changeStr,
+      value: `${analysis.resting_hr.current || 'N/A'} bpm${platform === 'strava' ? ' (est.)' : ''}`,
+      detail: platform === 'strava' ? 'estimated from activities' : changeStr,
       status: analysis.resting_hr.status || 'normal',
       emoji: getStatusEmoji(analysis.resting_hr.status || 'normal'),
     })
@@ -131,6 +132,7 @@ function getRaceName(goalType: string, goalTarget: string | null): string {
     'ultra': 'Ultra',
     'custom': 'Race',
     'build_mileage': 'Mileage Building',
+    'get_faster': 'Speed Training',
     'maintain_fitness': 'Fitness Maintenance',
     'base_building': 'Base Building',
     'return_from_injury': 'Return to Running',
@@ -305,7 +307,7 @@ function buildPlanExplanation(
 /**
  * Generate HTML for prior week recap section
  */
-function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null, platform?: 'garmin' | 'strava', unit: DistanceUnit = 'mi'): string {
+function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null, platform?: 'garmin' | 'strava', unit: DistanceUnit = 'mi', deviceName?: string): string {
   if (!recap) {
     return `
       <tr>
@@ -347,7 +349,7 @@ function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null, platform?: 'ga
             </td>
             ${platform === 'garmin' ? `
             <td style="text-align: right; vertical-align: middle;">
-              <span style="color: #999; font-size: 11px;">Data source: Garmin</span>
+              <img src="https://www.runplan.fun/garmin-tag-black.png" alt="Garmin" height="14" style="height: 14px; width: auto; opacity: 0.6; vertical-align: middle; margin-right: 4px;" /><span style="color: #999; font-size: 11px;">${deviceName || 'Garmin'}</span>
             </td>
             ` : ''}
           </tr>
@@ -466,12 +468,13 @@ export function generateEmailHtml(
   platformData: AllPlatformData | null,
   goalsUpdateUrl?: string,
   platform?: 'garmin' | 'strava',
-  distanceUnit: DistanceUnit = 'mi'
+  distanceUnit: DistanceUnit = 'mi',
+  insights?: Insight[]
 ): string {
   const week = getWeekDates()
   const weeksToRace = calculateWeeksUntilRace(config.goal_date)
   const raceName = getRaceName(config.goal_type, config.goal_target)
-  const healthSnapshot = buildHealthSnapshot(analysis)
+  const healthSnapshot = buildHealthSnapshot(analysis, platform)
   const recoveryStatus = determineRecoveryStatus(analysis)
 
   // Build prior week recap and plan explanation
@@ -612,9 +615,9 @@ export function generateEmailHtml(
           </tr>
 
           <!-- Prior Week Recap -->
-          ${generatePriorWeekRecapHtml(priorWeekRecap, platform, distanceUnit)}
+          ${generatePriorWeekRecapHtml(priorWeekRecap, platform, distanceUnit, platformData?.primaryDeviceName)}
 
-          <!-- Health Snapshot - only show when metrics are available -->
+          <!-- Health Snapshot -->
           ${healthSnapshot.length > 0 ? `
           <tr>
             <td style="padding: 24px;">
@@ -625,13 +628,31 @@ export function generateEmailHtml(
                   </td>
                   ${platform === 'garmin' ? `
                   <td style="text-align: right; vertical-align: middle;">
-                    <span style="color: #999; font-size: 11px;">Data source: Garmin</span>
+                    <img src="https://www.runplan.fun/garmin-tag-black.png" alt="Garmin" height="14" style="height: 14px; width: auto; opacity: 0.6; vertical-align: middle;" />
                   </td>
                   ` : ''}
                 </tr>
               </table>
               <table width="100%" cellpadding="0" cellspacing="0">
                 ${healthSnapshotHtml}
+              </table>
+              ${platform === 'garmin' ? `
+              <p style="color: #999; font-size: 11px; margin: 12px 0 0 0;">This data was created using data provided by Garmin.</p>
+              ` : ''}
+            </td>
+          </tr>
+          ` : platform === 'strava' ? `
+          <tr>
+            <td style="padding: 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <strong style="color: #0d47a1; font-size: 14px;">Health Snapshot</strong>
+                    <p style="color: #1565c0; font-size: 13px; margin: 8px 0 0 0;">
+                      Health metrics aren't available from Strava. Your plan is personalized based on your training patterns. For sleep, stress, and recovery insights, connect a Garmin device at <a href="https://www.runplan.fun/dashboard" style="color: #0d47a1;">runplan.fun/dashboard</a>.
+                    </p>
+                  </td>
+                </tr>
               </table>
             </td>
           </tr>
@@ -674,6 +695,38 @@ export function generateEmailHtml(
             </td>
           </tr>
 
+          ${insights && insights.length > 0 ? `
+          <!-- Personalized Adjustments -->
+          <tr>
+            <td style="padding: 0 24px 24px 24px;">
+              <h2 style="color: #333; font-size: 18px; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid #eee;">
+                Personalized Adjustments
+              </h2>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${insights.map(insight => {
+                  const colorMap: Record<string, { bg: string; border: string; text: string }> = {
+                    warning: { bg: '#fff8e1', border: '#ffc107', text: '#856404' },
+                    info: { bg: '#e3f2fd', border: '#2196f3', text: '#0d47a1' },
+                    positive: { bg: '#e8f5e9', border: '#4caf50', text: '#2e7d32' },
+                  }
+                  const colors = colorMap[insight.severity] || colorMap.info
+                  return `
+                <tr>
+                  <td style="padding: 6px 0;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: ${colors.bg}; border-left: 3px solid ${colors.border}; border-radius: 4px;">
+                      <tr>
+                        <td style="padding: 10px 12px;">
+                          <span style="color: ${colors.text}; font-size: 13px;">${insight.message}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>`
+                }).join('')}
+              </table>
+            </td>
+          </tr>
+          ` : ''}
           ${coachingNotesHtml}
           ${recoveryRecsHtml}
           ${updateGoalsHtml}
@@ -689,7 +742,7 @@ export function generateEmailHtml(
               </p>
               ${platform === 'garmin' ? `
               <p style="color: #bbb; font-size: 11px; margin: 0 0 8px 0;">
-                Training plan derived in part from Garmin device-sourced data.
+                Insights derived in part from Garmin device-sourced data.
               </p>
               ` : ''}
               <p style="color: #bbb; font-size: 11px; margin: 0;">
