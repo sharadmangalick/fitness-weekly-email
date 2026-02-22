@@ -9,6 +9,8 @@ import type { AnalysisResults } from './analyzer'
 import type { TrainingConfig } from '../database.types'
 import type { DistanceUnit } from '../platforms/interface'
 import { displayDistance, distanceLabelShort, paceLabel } from '../platforms/interface'
+import type { AdaptationResult } from './adaptations'
+import { applyStructureChanges, applyLongRunAdjustment } from './adaptations'
 
 // Race distance mapping
 const RACE_DISTANCES: Record<string, number> = {
@@ -16,7 +18,6 @@ const RACE_DISTANCES: Record<string, number> = {
   '10k': 6.2,
   'half_marathon': 13.1,
   'marathon': 26.2,
-  'ultra': 50.0,
 }
 
 // Phase multipliers for different training phases
@@ -106,7 +107,7 @@ function calculateWeeksUntilRace(goalDate: string | null): number | null {
 function getTargetPace(goalTimeMinutes: number | null, goalType: string, customDistance: number | null): string {
   if (!goalTimeMinutes) return '9:00'
 
-  const distance = goalType === 'custom' && customDistance
+  const distance = (goalType === 'custom' || goalType === 'ultra') && customDistance
     ? customDistance
     : RACE_DISTANCES[goalType] || 26.2
 
@@ -492,16 +493,22 @@ function generateRecoveryRecommendations(analysis: AnalysisResults, recoveryAdju
 export function generateTrainingPlan(
   config: TrainingConfig,
   analysis: AnalysisResults,
-  distanceUnit: DistanceUnit = 'mi'
+  distanceUnit: DistanceUnit = 'mi',
+  adaptations?: AdaptationResult
 ): TrainingPlan {
   const weeksToRace = calculateWeeksUntilRace(config.goal_date)
   const taperWeeks = config.taper_weeks ?? 3
   const phase = config.goal_category === 'race'
     ? getTrainingPhase(weeksToRace, taperWeeks)
-    : config.goal_type === 'maintain_fitness' ? 'maintenance' : 'build'
+    : config.goal_type === 'maintain_fitness' ? 'maintenance'
+    : config.goal_type === 'get_faster' ? 'peak'
+    : 'build'
 
   const baseMileage = config.current_weekly_mileage
-  const recoveryAdjustment = calculateRecoveryAdjustment(analysis)
+  // Use adaptations multiplier if provided, otherwise fall back to legacy calculation
+  const recoveryAdjustment = adaptations
+    ? adaptations.mileageMultiplier
+    : calculateRecoveryAdjustment(analysis)
   const phaseMultiplier = PHASE_MULTIPLIERS[phase] || 1.0
   const intensityMultiplier = INTENSITY_MULTIPLIERS[config.intensity_preference || 'normal'] || 1.0
   const longRunPct = LONG_RUN_PCT[phase] || 0.28
@@ -515,18 +522,29 @@ export function generateTrainingPlan(
 
   // Cap long run based on goal type
   const maxLongRun: Record<string, number> = {
-    '5k': 10, '10k': 12, 'half_marathon': 16, 'marathon': 22, 'ultra': 26,
+    '5k': 10, '10k': 12, 'half_marathon': 16, 'marathon': 22,
   }
-  const longRunCap = maxLongRun[config.goal_type] || 20
+  // Ultra scales with race distance: cap at ~65% of race distance
+  const ultraDist = config.goal_type === 'ultra' && config.custom_distance_miles
+    ? config.custom_distance_miles : 0
+  const longRunCap = config.goal_type === 'ultra' && ultraDist > 26.2
+    ? Math.min(Math.round(ultraDist * 0.65), 35)
+    : maxLongRun[config.goal_type] || 20
   longRunMiles = Math.min(longRunMiles, longRunCap)
   longRunMiles = Math.max(longRunMiles, 4)
 
+  // Apply long run adjustment from adaptations
+  if (adaptations?.longRunAdjustment) {
+    longRunMiles = applyLongRunAdjustment(longRunMiles, adaptations.longRunAdjustment)
+    longRunMiles = Math.max(longRunMiles, 3) // safety floor
+  }
+
   const targetPace = getTargetPace(config.goal_time_minutes, config.goal_type, config.custom_distance_miles)
-  const raceDistance = config.goal_type === 'custom' && config.custom_distance_miles
+  const raceDistance = (config.goal_type === 'custom' || config.goal_type === 'ultra') && config.custom_distance_miles
     ? config.custom_distance_miles
     : RACE_DISTANCES[config.goal_type] || 26.2
 
-  const dailyPlan = generateDailyPlan(
+  let dailyPlan = generateDailyPlan(
     weeklyMiles,
     longRunMiles,
     config.preferred_long_run_day,
@@ -538,15 +556,38 @@ export function generateTrainingPlan(
     config.race_name
   )
 
+  // Apply structure changes from adaptations
+  if (adaptations && adaptations.structureChanges.length > 0) {
+    const [paceMins, paceSecs] = targetPace.split(':').map(Number)
+    const pacePerMileMinutes = paceMins + paceSecs / 60
+    const unitLabel = paceLabel(distanceUnit)
+    const convertPace = (paceMinPerMile: number): string => {
+      const paceMinPerUnit = distanceUnit === 'km' ? paceMinPerMile / 1.60934 : paceMinPerMile
+      const m = Math.floor(paceMinPerUnit)
+      const s = Math.round((paceMinPerUnit - m) * 60)
+      return `${m}:${s.toString().padStart(2, '0')}`
+    }
+    const easyPace = `${convertPace(pacePerMileMinutes + 1)}-${convertPace(pacePerMileMinutes + 2)}`
+    dailyPlan = applyStructureChanges(dailyPlan, adaptations.structureChanges, easyPace, unitLabel)
+  }
+
   const totalMiles = dailyPlan.reduce((sum, day) => sum + (day.distance_miles || 0), 0)
 
   const coachingNotes = generateCoachingNotes(phase, weeksToRace, config.goal_type, recoveryAdjustment, config.race_name)
   const recoveryRecommendations = generateRecoveryRecommendations(analysis, recoveryAdjustment)
 
+  // Merge adaptation insights into coaching notes
+  if (adaptations && adaptations.insights.length > 0) {
+    const adaptationNotes = adaptations.insights
+      .filter(i => i.severity === 'warning' || i.severity === 'positive')
+      .map(i => i.message)
+    coachingNotes.push(...adaptationNotes)
+  }
+
   const raceNames: Record<string, string> = {
     '5k': '5K', '10k': '10K', 'half_marathon': 'Half Marathon',
     'marathon': 'Marathon', 'ultra': 'Ultra', 'build_mileage': 'Mileage Building',
-    'maintain_fitness': 'Fitness Maintenance', 'base_building': 'Base Building',
+    'get_faster': 'Speed Training', 'maintain_fitness': 'Fitness Maintenance', 'base_building': 'Base Building',
   }
   const displayRaceName = config.race_name || raceNames[config.goal_type] || 'race'
 
@@ -563,6 +604,8 @@ export function generateTrainingPlan(
     focus = `Tapering - maintaining fitness while recovering for ${displayRaceName}`
   } else if (phase === 'race_week') {
     focus = `${displayRaceName} week - stay fresh and execute your race plan!`
+  } else if (config.goal_type === 'get_faster') {
+    focus = 'Speed-focused training with tempo and quality workouts'
   } else {
     focus = raceNames[config.goal_type] || 'General training'
   }
@@ -633,9 +676,13 @@ export function generatePlanProjection(config: TrainingConfig): WeekProjection[]
 
     // Cap long run based on goal type
     const maxLongRun: Record<string, number> = {
-      '5k': 10, '10k': 12, 'half_marathon': 16, 'marathon': 22, 'ultra': 26,
+      '5k': 10, '10k': 12, 'half_marathon': 16, 'marathon': 22,
     }
-    const longRunCap = maxLongRun[config.goal_type] || 20
+    const ultraDist = config.goal_type === 'ultra' && config.custom_distance_miles
+      ? config.custom_distance_miles : 0
+    const longRunCap = config.goal_type === 'ultra' && ultraDist > 26.2
+      ? Math.min(Math.round(ultraDist * 0.65), 35)
+      : maxLongRun[config.goal_type] || 20
     longRunMiles = Math.min(longRunMiles, longRunCap)
     longRunMiles = Math.max(longRunMiles, 4)
 

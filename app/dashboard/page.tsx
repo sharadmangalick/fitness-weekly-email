@@ -13,6 +13,7 @@ import MileageMismatchBanner from '@/components/MileageMismatchBanner'
 import { useCalculatedMileage } from '@/hooks/useCalculatedMileage'
 import type { TrainingPlan } from '@/lib/training/planner'
 import type { AnalysisResults } from '@/lib/training/analyzer'
+import type { Insight } from '@/lib/training/adaptations'
 import { setUserId, trackPlatformConnection } from '@/components/GoogleAnalytics'
 import type { DistanceUnit } from '@/lib/platforms/interface'
 
@@ -37,6 +38,7 @@ interface GeneratedPlanData {
   plan: TrainingPlan
   analysis: AnalysisResults
   generatedAt: string
+  insights?: Insight[]
 }
 
 // Map error codes to user-friendly messages
@@ -192,6 +194,7 @@ export default function DashboardPage() {
             plan: data.plan,
             analysis: data.analysis,
             generatedAt: data.generatedAt,
+            insights: data.insights,
           })
         }
       }
@@ -220,6 +223,7 @@ export default function DashboardPage() {
         plan: data.plan,
         analysis: data.analysis,
         generatedAt: data.generatedAt,
+        insights: data.insights,
       })
     } catch (err) {
       setPlanError(err instanceof Error ? err.message : 'Failed to generate plan')
@@ -687,6 +691,7 @@ export default function DashboardPage() {
                 onIntensityChange={handleIntensityChange}
                 platform={garminConnection ? 'garmin' : stravaConnection ? 'strava' : undefined}
                 distanceUnit={distanceUnit}
+                insights={currentPlan.insights}
               />
             )}
 

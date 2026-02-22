@@ -6,6 +6,7 @@ import { GarminAdapter } from '@/lib/platforms/garmin/adapter'
 import { StravaAdapter } from '@/lib/platforms/strava/adapter'
 import { analyzeTrainingData, AnalysisResults } from '@/lib/training/analyzer'
 import { generateTrainingPlan, TrainingPlan, calculateRecoveryAdjustment, getRecoveryConcerns } from '@/lib/training/planner'
+import { computeAdaptations } from '@/lib/training/adaptations'
 import type { GarminOAuthTokens, StravaTokens, AllPlatformData, DistanceUnit } from '@/lib/platforms/interface'
 import type { TrainingConfig } from '@/lib/database.types'
 
@@ -17,6 +18,7 @@ interface GeneratedPlanResponse {
   analysis: AnalysisResults
   cached: boolean
   generatedAt: string
+  insights?: import('@/lib/training/adaptations').Insight[]
 }
 
 /**
@@ -149,9 +151,39 @@ export async function POST(request: NextRequest) {
     // Analyze the data
     const analysis = analyzeTrainingData(platformData)
 
-    // Generate the training plan
+    // Compute adaptations and generate the training plan
     const distanceUnit = ((profile as any).distance_unit as DistanceUnit) || 'mi'
-    const plan = generateTrainingPlan(config as TrainingConfig, analysis, distanceUnit)
+    const trainingConfig = config as TrainingConfig
+
+    // Calculate phase for adaptations context
+    const weeksToRace = trainingConfig.goal_date
+      ? Math.max(0, Math.floor((new Date(trainingConfig.goal_date).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))
+      : null
+    const taperWeeks = trainingConfig.taper_weeks ?? 3
+    const phase = trainingConfig.goal_category === 'race' && weeksToRace !== null
+      ? (weeksToRace > 12 ? 'base' : weeksToRace > 3 + taperWeeks ? 'build' : weeksToRace > taperWeeks ? 'peak' : weeksToRace > 0 ? 'taper' : 'race_week')
+      : trainingConfig.goal_type === 'maintain_fitness' ? 'maintenance' : 'build'
+
+    // Parse goal pace for pace personalization
+    let goalPaceMinPerMile: number | null = null
+    if (trainingConfig.goal_time_minutes) {
+      const RACE_DISTANCES: Record<string, number> = { '5k': 3.1, '10k': 6.2, 'half_marathon': 13.1, 'marathon': 26.2 }
+      const dist = (trainingConfig.goal_type === 'custom' || trainingConfig.goal_type === 'ultra') && trainingConfig.custom_distance_miles
+        ? trainingConfig.custom_distance_miles
+        : RACE_DISTANCES[trainingConfig.goal_type] || 26.2
+      goalPaceMinPerMile = trainingConfig.goal_time_minutes / dist
+    }
+
+    const adaptations = computeAdaptations(
+      analysis,
+      platformData,
+      phase,
+      goalPaceMinPerMile,
+      null, // expectedLongRunMiles computed inside planner
+      trainingConfig.preferred_long_run_day
+    )
+
+    const plan = generateTrainingPlan(trainingConfig, analysis, distanceUnit, adaptations)
 
     // Cache the generated plan (upsert)
     await (adminClient as any)
@@ -209,6 +241,7 @@ export async function POST(request: NextRequest) {
       analysis,
       cached: false,
       generatedAt: new Date().toISOString(),
+      insights: adaptations.insights,
     }
 
     return NextResponse.json(response)

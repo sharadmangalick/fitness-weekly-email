@@ -5,6 +5,7 @@ import { GarminAdapter } from '@/lib/platforms/garmin/adapter'
 import { StravaAdapter } from '@/lib/platforms/strava/adapter'
 import { analyzeTrainingData } from '@/lib/training/analyzer'
 import { generateTrainingPlan } from '@/lib/training/planner'
+import { computeAdaptations } from '@/lib/training/adaptations'
 import { generateEmailHtml, generateEmailSubject } from '@/lib/training/emailer'
 import { calculateUpdatedBaseline } from '@/lib/training/mileage-calculator'
 import { Resend } from 'resend'
@@ -203,13 +204,42 @@ export async function POST(request: NextRequest) {
         // Get user's distance unit preference
         const distanceUnit = (profile as any).distance_unit as DistanceUnit || 'mi'
 
-        // Generate training plan (with updated baseline)
-        const plan = generateTrainingPlan(config, analysis, distanceUnit)
+        // Calculate phase for adaptations context
+        const weeksToRace = config.goal_date
+          ? Math.max(0, Math.floor((new Date(config.goal_date).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))
+          : null
+        const taperWeeks = config.taper_weeks ?? 3
+        const phase = config.goal_category === 'race' && weeksToRace !== null
+          ? (weeksToRace > 12 ? 'base' : weeksToRace > 3 + taperWeeks ? 'build' : weeksToRace > taperWeeks ? 'peak' : weeksToRace > 0 ? 'taper' : 'race_week')
+          : config.goal_type === 'maintain_fitness' ? 'maintenance' : 'build'
+
+        // Parse goal pace for pace personalization
+        let goalPaceMinPerMile: number | null = null
+        if (config.goal_time_minutes) {
+          const RACE_DISTANCES: Record<string, number> = { '5k': 3.1, '10k': 6.2, 'half_marathon': 13.1, 'marathon': 26.2 }
+          const dist = (config.goal_type === 'custom' || config.goal_type === 'ultra') && config.custom_distance_miles
+            ? config.custom_distance_miles
+            : RACE_DISTANCES[config.goal_type] || 26.2
+          goalPaceMinPerMile = config.goal_time_minutes / dist
+        }
+
+        // Compute adaptations
+        const adaptations = computeAdaptations(
+          analysis,
+          platformData,
+          phase,
+          goalPaceMinPerMile,
+          null,
+          config.preferred_long_run_day
+        )
+
+        // Generate training plan (with updated baseline and adaptations)
+        const plan = generateTrainingPlan(config, analysis, distanceUnit, adaptations)
 
         // Generate email
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://runplan.fun'
         const goalsUrl = `${appUrl}/dashboard`
-        const emailHtml = generateEmailHtml(profile, config, analysis, plan, platformData, goalsUrl, connection.platform as 'garmin' | 'strava', distanceUnit)
+        const emailHtml = generateEmailHtml(profile, config, analysis, plan, platformData, goalsUrl, connection.platform as 'garmin' | 'strava', distanceUnit, adaptations.insights)
         const emailSubject = generateEmailSubject(config)
 
         // Send email via Resend

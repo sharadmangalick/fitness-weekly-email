@@ -22,7 +22,6 @@ const RACE_DISTANCES: Record<string, number> = {
   '10k': 6.2,
   'half_marathon': 13.1,
   'marathon': 26.2,
-  'ultra': 50.0,
   'custom': 0,
 }
 
@@ -67,7 +66,7 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
   // Calculate pace (always calculate from miles, then convert for display)
   const calculatePace = () => {
     const totalMinutes = goalHours * 60 + goalMinutes
-    const distanceMiles = goalType === 'custom' ? customDistanceMiles : (RACE_DISTANCES[goalType] || 26.2)
+    const distanceMiles = (goalType === 'custom' || goalType === 'ultra') ? customDistanceMiles : (RACE_DISTANCES[goalType] || 26.2)
     if (!distanceMiles || distanceMiles <= 0) return '--:--'
     const distanceInUnit = distanceUnit === 'km' ? distanceMiles * 1.60934 : distanceMiles
     const pacePerUnit = totalMinutes / distanceInUnit
@@ -98,7 +97,7 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
           ? `${goalHours}:${goalMinutes.toString().padStart(2, '0')} ${raceLabel}`
           : goalType.replace(/_/g, ' '),
         race_name: goalCategory === 'race' && raceName ? raceName : null,
-        custom_distance_miles: goalType === 'custom' ? customDistanceMiles : null,
+        custom_distance_miles: (goalType === 'custom' || goalType === 'ultra') ? customDistanceMiles : null,
         target_weekly_mileage: goalType === 'build_mileage' ? targetMileage : null,
         current_weekly_mileage: currentMileage,
         experience_level: experienceLevel,
@@ -190,27 +189,33 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Race Distance</label>
                 <select
                   value={goalType}
-                  onChange={(e) => setGoalType(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setGoalType(val)
+                    if (val === 'ultra' && customDistanceMiles < 26.3) {
+                      setCustomDistanceMiles(31.1) // default to 50K
+                    }
+                  }}
                   className="input-field"
                 >
                   <option value="5k">5K (3.1 mi / 5.0 km)</option>
                   <option value="10k">10K (6.2 mi / 10.0 km)</option>
                   <option value="half_marathon">Half Marathon (13.1 mi / 21.1 km)</option>
                   <option value="marathon">Marathon (26.2 mi / 42.2 km)</option>
-                  <option value="ultra">Ultra Marathon (50K+)</option>
+                  <option value="ultra">Ultra (anything beyond marathon)</option>
                   <option value="custom">Custom Distance</option>
                 </select>
               </div>
 
-              {goalType === 'custom' && (
+              {(goalType === 'custom' || goalType === 'ultra') && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Race Distance ({distanceUnit === 'km' ? 'km' : 'miles'})
                   </label>
                   <input
                     type="number"
-                    min="0.1"
-                    max="200"
+                    min={goalType === 'ultra' ? (distanceUnit === 'km' ? '42.3' : '26.3') : '0.1'}
+                    max="500"
                     step="0.1"
                     value={distanceUnit === 'km' ? Math.round(customDistanceMiles * 1.60934 * 10) / 10 : customDistanceMiles}
                     onChange={(e) => {
@@ -218,8 +223,13 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
                       setCustomDistanceMiles(distanceUnit === 'km' ? Math.round(val / 1.60934 * 10) / 10 : val)
                     }}
                     className="input-field"
-                    placeholder={distanceUnit === 'km' ? 'e.g. 15' : 'e.g. 10'}
+                    placeholder={goalType === 'ultra'
+                      ? (distanceUnit === 'km' ? 'e.g. 50, 100, 160' : 'e.g. 31, 50, 100')
+                      : (distanceUnit === 'km' ? 'e.g. 15' : 'e.g. 10')}
                   />
+                  {goalType === 'ultra' && (
+                    <p className="text-xs text-gray-500 mt-1">Common ultras: 50K (31.1 mi), 50 mi, 100K (62.1 mi), 100 mi</p>
+                  )}
                 </div>
               )}
 
@@ -301,6 +311,7 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
                   className="input-field"
                 >
                   <option value="build_mileage">Build Weekly Mileage</option>
+                  <option value="get_faster">Get Faster</option>
                   <option value="maintain_fitness">Maintain Current Fitness</option>
                   <option value="base_building">Base Building</option>
                   <option value="return_from_injury">Return from Injury</option>
@@ -466,7 +477,7 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
                     : goalType.replace(/_/g, ' ')}
                 </span>
               </div>
-              {goalCategory === 'race' && goalType === 'custom' && (
+              {goalCategory === 'race' && (goalType === 'custom' || goalType === 'ultra') && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Distance</span>
                   <span className="font-medium">{displayDistance(customDistanceMiles, distanceUnit)} {distanceLabel(distanceUnit)}</span>
