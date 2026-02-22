@@ -10,6 +10,7 @@ import FullPlanOverview from '@/components/FullPlanOverview'
 import OnboardingFlow from '@/components/Onboarding/OnboardingFlow'
 import OnboardingBanner from '@/components/Onboarding/OnboardingBanner'
 import MileageMismatchBanner from '@/components/MileageMismatchBanner'
+import GarminMigrationBanner from '@/components/GarminMigrationBanner'
 import { useCalculatedMileage } from '@/hooks/useCalculatedMileage'
 import type { TrainingPlan } from '@/lib/training/planner'
 import type { AnalysisResults } from '@/lib/training/analyzer'
@@ -73,6 +74,7 @@ export default function DashboardPage() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [connectionError, setConnectionError] = useState<{ message: string; flowId?: string } | null>(null)
   const [mileageBannerDismissed, setMileageBannerDismissed] = useState(false)
+  const [migrationBannerDismissed, setMigrationBannerDismissed] = useState(false)
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('mi')
   const [stravaAutoDetected, setStravaAutoDetected] = useState(false)
   const router = useRouter()
@@ -80,11 +82,15 @@ export default function DashboardPage() {
   const supabase = createBrowserClient()
   const { calculatedMileage } = useCalculatedMileage()
 
-  // Load mileage banner dismissal state from localStorage
+  // Load banner dismissal states from localStorage
   useEffect(() => {
     const dismissed = localStorage.getItem('mileage-banner-dismissed')
     if (dismissed === 'true') {
       setMileageBannerDismissed(true)
+    }
+    const migrationDismissed = localStorage.getItem('garmin-migration-dismissed')
+    if (migrationDismissed === 'true') {
+      setMigrationBannerDismissed(true)
     }
   }, [])
 
@@ -394,6 +400,14 @@ export default function DashboardPage() {
     setMileageBannerDismissed(true)
   }
 
+  const handleMigrationBannerDismiss = () => {
+    localStorage.setItem('garmin-migration-dismissed', 'true')
+    setMigrationBannerDismissed(true)
+  }
+
+  // Show Garmin migration banner when connection is expired and not dismissed
+  const showGarminMigrationBanner = garminConnection?.status === 'expired' && !migrationBannerDismissed
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
       {/* Header */}
@@ -438,6 +452,14 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Garmin Migration Banner */}
+        {showGarminMigrationBanner && (
+          <GarminMigrationBanner
+            onReconnect={handleGarminConnect}
+            onDismiss={handleMigrationBannerDismiss}
+          />
         )}
 
         {/* Onboarding Banner for skipped users */}
