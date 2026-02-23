@@ -142,12 +142,24 @@ export function generateWelcomeEmailHtml(userName: string, dashboardUrl: string)
             </td>
           </tr>
 
+          <!-- Personal Note -->
+          <tr>
+            <td style="padding: 0 24px 24px 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0f7ff; border-radius: 8px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 20px; text-align: center;">
+                    <p style="color: #555; font-size: 14px; line-height: 1.5; margin: 0;">
+                      Questions or ideas? <a href="mailto:sharad@runplan.fun?subject=RunPlan%20Feedback%20-%20New%20User" style="color: #667eea; text-decoration: underline;">Email me at sharad@runplan.fun</a> &mdash; I read every message. &mdash; Sharad
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
           <!-- Footer -->
           <tr>
             <td style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
-              <p style="color: #999; font-size: 12px; margin: 0 0 12px 0;">
-                Questions? Just reply to this email - we're here to help!
-              </p>
               <p style="color: #888; font-size: 12px; margin: 0 0 12px 0;">
                 Find this useful? A little support helps keep RunPlan running. <a href="https://www.runplan.fun/support" style="color: #764ba2; text-decoration: underline;">Support here</a>
               </p>

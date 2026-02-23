@@ -731,6 +731,27 @@ export function generateEmailHtml(
           ${recoveryRecsHtml}
           ${updateGoalsHtml}
 
+          <!-- Feedback & Share -->
+          <tr>
+            <td style="padding: 0 24px 24px 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0f7ff; border-radius: 8px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 20px; text-align: center;">
+                    <p style="color: #333; font-size: 15px; font-weight: 600; margin: 0 0 8px 0;">
+                      How was this week's plan?
+                    </p>
+                    <p style="color: #555; font-size: 14px; line-height: 1.5; margin: 0 0 16px 0;">
+                      Hit reply or <a href="mailto:sharad@runplan.fun?subject=RunPlan%20Feedback%20-%20Week%20of%20${encodeURIComponent(week.start)}" style="color: #667eea; text-decoration: underline;">email me directly</a> &mdash; I read every message. &mdash; Sharad
+                    </p>
+                    <p style="color: #888; font-size: 13px; margin: 0;">
+                      Know a runner who'd like this? Send them to <a href="https://runplan.fun" style="color: #667eea; text-decoration: underline;">runplan.fun</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
           <!-- Footer -->
           <tr>
             <td style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
