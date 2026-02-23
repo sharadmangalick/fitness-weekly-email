@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
             currency: 'usd',
             product_data: {
               name: 'Support RunPlan.fun',
-              description: 'Thank you for supporting free personalized training plans!',
+              description: 'Thank you for supporting RunPlan.fun!',
             },
             unit_amount: amountCents,
           },

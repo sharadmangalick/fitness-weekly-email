@@ -121,10 +121,10 @@ export default function AboutPage() {
                 <div className="border-2 border-slate-200 rounded-xl p-6">
                   <h3 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
                     <span className="text-lg">💰</span>
-                    Free Forever
+                    No Hidden Costs
                   </h3>
                   <p className="text-slate-700 text-sm">
-                    Your weekly training plans will always be free. No hidden costs, no credit card required, no trial that converts to paid.
+                    Your weekly training plans are free — no credit card required, no surprise charges. We may add optional premium features in the future, but the core experience stays free.
                   </p>
                 </div>
 

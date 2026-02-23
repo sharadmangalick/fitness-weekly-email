@@ -137,7 +137,7 @@ export default function HomePage() {
             <div className="flex items-center gap-3 text-sm text-slate-700 font-medium">
               <span>No credit card</span>
               <span className="text-slate-700">•</span>
-              <span>Free forever</span>
+              <span>Cancel anytime</span>
               <span className="text-slate-700">•</span>
               <span>2-minute setup</span>
             </div>
@@ -863,7 +863,7 @@ export default function HomePage() {
                 Is this really free?
               </h3>
               <p className="text-slate-700 leading-relaxed">
-                Yes, completely free. No credit card required, no trial period that converts to paid, no hidden costs. We built RunPlan because we love running and wanted a better way to train. We may offer premium features in the future (like in-depth analytics or race-day strategy), but the core weekly training plans will always be free.
+                Yes! RunPlan is free to use — no credit card required, no hidden costs. We built RunPlan because we love running and wanted a better way to train. We may offer optional premium features in the future (like in-depth analytics or race-day strategy), but your core weekly training plans are included at no cost.
               </p>
             </div>
 

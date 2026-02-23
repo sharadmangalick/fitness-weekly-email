@@ -352,10 +352,10 @@ export default function TermsOfServicePage() {
                 We may introduce optional paid features in the future (such as advanced analytics, race-day strategies, or 1-on-1 coaching). If we do:
               </p>
               <ul className="list-disc list-inside text-slate-700 space-y-1 ml-4 text-sm">
-                <li>Core weekly training plans will remain <strong>free forever</strong></li>
+                <li>Core weekly training plans are currently included at <strong>no cost</strong></li>
                 <li>Existing users will be notified before any paid features launch</li>
                 <li>You will never be charged without explicit consent</li>
-                <li>Free users will not lose existing functionality</li>
+                <li>Existing features will remain available to all users</li>
               </ul>
             </div>
           </section>

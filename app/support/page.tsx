@@ -68,7 +68,7 @@ export default function DonatePage() {
             Support RunPlan.fun
           </h1>
           <p className="text-gray-600">
-            Help keep personalized training plans free for everyone
+            Help support personalized training plans for everyone
           </p>
         </div>
 
@@ -141,7 +141,7 @@ export default function DonatePage() {
           </button>
 
           <p className="text-xs text-gray-500 text-center">
-            Secure payment powered by Stripe. Your donation helps cover hosting costs and keeps RunPlan.fun free for all runners.
+            Secure payment powered by Stripe. Your donation helps cover hosting costs and helps keep RunPlan.fun running for all runners.
           </p>
 
           <div className="pt-4 border-t border-gray-200 text-center">

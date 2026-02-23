@@ -39,7 +39,7 @@ export default function DonationSuccessPage() {
         </h1>
 
         <p className="text-gray-600 mb-6">
-          Your donation means a lot and helps keep RunPlan.fun free for runners everywhere. We appreciate your support!
+          Your donation means a lot and helps keep RunPlan.fun running for runners everywhere. We appreciate your support!
         </p>
 
         <div className="space-y-3">
