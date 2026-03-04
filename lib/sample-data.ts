@@ -44,6 +44,7 @@ export const sampleTrainingConfig: TrainingConfig = {
   custom_distance_miles: null,
   target_weekly_mileage: null,
   current_weekly_mileage: 45,
+  runs_per_week: null,
   experience_level: 'intermediate',
   preferred_long_run_day: 'sunday',
   taper_weeks: 3,
