@@ -118,14 +118,20 @@ This ensures future sessions always have accurate context. Small, incremental up
 
 ---
 
-## Testing Checklist
+## Testing
 
-Before committing:
-1. `npm test` — run vitest unit tests
+### Unit Tests (Vitest)
+- **Run:** `npm test` (alias for `vitest run`)
+- **Location:** `/lib/training/__tests__/planner.test.ts` (42 tests)
+- **REQUIRED:** Run `npm test` after any change to `/lib/training/` files. Do not commit if tests fail.
+- When adding new functions or modifying existing logic in training modules, add or update corresponding tests.
+
+### Pre-Commit Checklist
+1. `npm test` — all unit tests pass
 2. `npm run dev` — verify changes work
 3. Test at 375px mobile width (primary viewport)
-3. Check browser console for errors
-4. Test error scenarios (network failures, auth failures, invalid input)
-5. For DB changes: verify RLS policies work
+4. Check browser console for errors
+5. Test error scenarios (network failures, auth failures, invalid input)
+6. For DB changes: verify RLS policies work
 
 Integration points: Garmin OAuth, Strava OAuth, email delivery, webhook processing.
