@@ -223,7 +223,7 @@ Last Updated: 2026-03-03
 
 ### 20. Mobile UX Audit & Fixes
 
-**Status**: Ready to implement
+**Status**: ✅ COMPLETED (2026-03-03)
 
 **Source**: User testing feedback (2026-03-03)
 
@@ -369,7 +369,7 @@ Last Updated: 2026-03-03
 
 ### 21. Update Homepage Messaging for Non-Race Runners
 
-**Status**: Ready to implement
+**Status**: ✅ COMPLETED (2026-03-03)
 
 **Source**: User testing feedback (2026-03-03)
 
