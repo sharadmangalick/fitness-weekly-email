@@ -27,6 +27,18 @@ The user has explicitly requested: *"I have a bad memory, so I would want you to
 
 **Skip backlog check only for:** bug fixes, emergencies, documentation, security patches.
 
+### Keeping CLAUDE.md Current
+
+**REQUIRED:** When reviewing or modifying the codebase, always check whether `CLAUDE.md` needs updating. Update it whenever:
+- New files, directories, or modules are added or renamed
+- Architecture patterns change (new adapters, new data flow, etc.)
+- Key functions are added, removed, or significantly refactored
+- Database tables or schemas change
+- New conventions or tooling are adopted
+- Information in CLAUDE.md has become stale or inaccurate
+
+This ensures future sessions always have accurate context. Small, incremental updates are preferred over large rewrites.
+
 ### Prioritization
 1. 🔴 High Priority backlog items first
 2. 🟡 Quick wins (high impact, low effort)
@@ -43,7 +55,7 @@ The user has explicitly requested: *"I have a bad memory, so I would want you to
   - `strava/` — Strava OAuth + API
   - `interface.ts` — Common interface, `displayDistance()`, `distanceLabel()`
 - `/lib/training/` — Core training logic
-  - `planner.ts` — Plan generation (`generateDailyPlan()`, phase logic, mileage calc)
+  - `planner.ts` — Plan generation (`generateDailyPlan()`, phase logic, mileage calc, dynamic run count variation)
   - `analyzer.ts` — Health data analysis (RHR, sleep, stress, body battery)
   - `adaptations.ts` — Recovery-based plan adjustments
   - `emailer.ts` — Weekly email generation
