@@ -335,9 +335,9 @@ export default function HomePage() {
                 <div className="w-14 h-14 bg-gradient-to-br from-pink-400 to-purple-500 rounded-2xl flex items-center justify-center mb-6">
                   <span className="text-2xl">🎯</span>
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">Set Your Race Goal</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Set Your Goal</h3>
                 <p className="text-slate-700 leading-relaxed">
-                  5K PR? First marathon? Building your base? Tell us your race and target time - we'll map out your training.
+                  Training for a 5K? Recovering from injury? Just want to run more? Tell us your goal and we'll map out your training.
                 </p>
               </div>
             </div>
@@ -398,9 +398,9 @@ export default function HomePage() {
               <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-5 shadow-sm">
                 <span className="text-2xl">🏁</span>
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">Race-Ready Plans</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Plans That Fit Your Goals</h3>
               <p className="text-slate-700 leading-relaxed">
-                5K, 10K, half marathon, or marathon - get the right mix of easy runs, tempo work, and long runs to hit your goal time.
+                Race training, base building, injury recovery, or just getting faster - get the right mix of runs tailored to where you are and where you want to be.
               </p>
             </div>
 
@@ -910,7 +910,7 @@ export default function HomePage() {
                 How does the AI actually work?
               </h3>
               <p className="text-slate-700 leading-relaxed">
-                We analyze 7+ data points from your watch: weekly mileage, pace trends, recovery metrics (sleep, resting heart rate, HRV if available), training load, and workout consistency. Our AI compares your data against proven training principles (progressive overload, periodization, recovery cycles) and your specific goal (race date and target time). Each week, it generates a plan that pushes you forward without overtraining.
+                We analyze 7+ data points from your watch: weekly mileage, pace trends, recovery metrics (sleep, resting heart rate, HRV if available), training load, and workout consistency. Our AI compares your data against proven training principles (progressive overload, periodization, recovery cycles) and your specific goal (whether that's a race, building mileage, or getting back from injury). Each week, it generates a plan that pushes you forward without overtraining.
               </p>
             </div>
 

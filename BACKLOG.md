@@ -54,7 +54,7 @@ Last Updated: 2026-03-03
 
 ### 2. Migrate Garmin Authentication to OAuth 2.0
 
-**Status**: Applied for Garmin Developer Program access, waiting for approval
+**Status**: ✅ COMPLETED (2026-03-03)
 
 **Description**: Replace current email/password authentication for Garmin Connect with official OAuth 2.0 flow. Users will authenticate directly on Garmin's website instead of entering credentials into RunPlan.
 
@@ -759,7 +759,7 @@ Items that don't directly impact conversion but improve maintainability:
 ### Next.js Config Warning
 - **Issue**: `experimental.serverActions` deprecated config option
 - **Fix**: Remove from next.config.js
-- **Priority**: Very Low (cosmetic warning only)
+- **Status**: ✅ COMPLETED (2026-03-03)
 
 ### TypeScript Types for Supabase
 - **Issue**: Some operations require `as any` casting

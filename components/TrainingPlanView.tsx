@@ -124,9 +124,9 @@ export default function TrainingPlanView({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-xl font-bold text-gray-900">Your Training Plan</h2>
             <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">
               {plan.week_summary.training_phase}

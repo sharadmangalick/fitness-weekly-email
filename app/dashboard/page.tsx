@@ -557,7 +557,7 @@ export default function DashboardPage() {
 
         {/* Training Goals */}
         <section>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
             <h2 className="text-xl font-bold text-gray-900">Training Goals</h2>
             <button
               onClick={() => setShowGoalWizard(true)}
@@ -568,8 +568,8 @@ export default function DashboardPage() {
           </div>
 
           {config ? (
-            <div className="card p-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="card p-4 sm:p-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
                 <div>
                   <div className="text-sm text-gray-500">Goal Type</div>
                   <div className="font-semibold text-gray-900">

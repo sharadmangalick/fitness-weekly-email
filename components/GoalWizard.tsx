@@ -493,7 +493,7 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
           <div className="p-4 bg-primary/5 rounded-lg">
             <h4 className="font-semibold text-gray-900 mb-3">Summary</h4>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between">
                 <span className="text-gray-600">Goal</span>
                 <span className="font-medium">
                   {goalCategory === 'race'
@@ -502,32 +502,32 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
                 </span>
               </div>
               {goalCategory === 'race' && (goalType === 'custom' || goalType === 'ultra') && (
-                <div className="flex justify-between">
+                <div className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-gray-600">Distance</span>
                   <span className="font-medium">{displayDistance(customDistanceMiles, distanceUnit)} {distanceLabel(distanceUnit)}</span>
                 </div>
               )}
               {goalCategory === 'race' && (
                 <>
-                  <div className="flex justify-between">
+                  <div className="flex flex-col sm:flex-row sm:justify-between">
                     <span className="text-gray-600">Race Date</span>
                     <span className="font-medium">{new Date(goalDate).toLocaleDateString()}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-col sm:flex-row sm:justify-between">
                     <span className="text-gray-600">Taper</span>
                     <span className="font-medium">{taperWeeks} week{taperWeeks !== 1 ? 's' : ''}</span>
                   </div>
                 </>
               )}
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between">
                 <span className="text-gray-600">Weekly {distanceUnit === 'km' ? 'Volume' : 'Mileage'}</span>
                 <span className="font-medium">{displayDistance(currentMileage, distanceUnit, 0)} {distanceLabel(distanceUnit)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between">
                 <span className="text-gray-600">Run Frequency</span>
                 <span className="font-medium">{runsPerWeek ? `${runsPerWeek} days/week` : 'Auto (4-5 days)'}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between">
                 <span className="text-gray-600">Email Day</span>
                 <span className="font-medium capitalize">{emailDay}</span>
               </div>
@@ -575,7 +575,7 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
   // Modal mode: render with full modal wrapper
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl my-8">
+      <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl my-2 sm:my-8">
         <div className="gradient-primary p-6 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div>

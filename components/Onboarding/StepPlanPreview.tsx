@@ -116,8 +116,8 @@ export default function StepPlanPreview({ onComplete, loading = false }: StepPla
                     {day.day}
                   </span>
                 </div>
-                <div className="text-right">
-                  <span className="text-sm text-gray-900">
+                <div className="text-right min-w-0">
+                  <span className="text-sm text-gray-900 truncate block">
                     {day.title}
                   </span>
                   {day.distance_miles && day.workout_type !== 'rest' && (
