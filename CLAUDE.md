@@ -55,10 +55,17 @@ This ensures future sessions always have accurate context. Small, incremental up
   - `strava/` — Strava OAuth + API
   - `interface.ts` — Common interface, `displayDistance()`, `distanceLabel()`
 - `/lib/training/` — Core training logic
-  - `planner.ts` — Plan generation (`generateDailyPlan()`, phase logic, mileage calc, dynamic run count variation)
+  - `planner.ts` — Orchestrator: `generateTrainingPlan()`, `generateDailyPlan()`, phase logic, mileage calc
+  - `run-variation.ts` — Dynamic run count variation (`calculateRunCountVariation()`, cycles, guardrails)
+  - `coaching.ts` — `generateCoachingNotes()`, `generateRecoveryRecommendations()`
+  - `plans/recovery.ts` — Recovery/injury plan generator
+  - `plans/taper.ts` — Taper phase plan generator
+  - `plans/race-week.ts` — Race week plan generator
+  - `plans/frequency-aware.ts` — Frequency-aware plan generator (`selectRunDays()`)
   - `analyzer.ts` — Health data analysis (RHR, sleep, stress, body battery)
   - `adaptations.ts` — Recovery-based plan adjustments
   - `emailer.ts` — Weekly email generation
+  - `__tests__/planner.test.ts` — Unit tests (vitest)
 - `/lib/encryption.ts` — AES-256 encrypt/decrypt for OAuth tokens
 - `/components/` — React components (most are `'use client'`)
 - `/app/api/` — API routes (Next.js App Router)
@@ -112,8 +119,9 @@ This ensures future sessions always have accurate context. Small, incremental up
 ## Testing Checklist
 
 Before committing:
-1. `npm run dev` — verify changes work
-2. Test at 375px mobile width (primary viewport)
+1. `npm test` — run vitest unit tests
+2. `npm run dev` — verify changes work
+3. Test at 375px mobile width (primary viewport)
 3. Check browser console for errors
 4. Test error scenarios (network failures, auth failures, invalid input)
 5. For DB changes: verify RLS policies work

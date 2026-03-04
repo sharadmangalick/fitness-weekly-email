@@ -368,6 +368,20 @@ Last Updated: 2026-03-03
 
 ---
 
+### 25. Decision Log
+
+**Status**: Ready to create
+
+**Description**: Create `/docs/DECISIONS.md` to record non-obvious architectural choices (e.g., why frequency-aware plans are separate from taper plans, why RPE fatigue overrides cycle-based variation, etc.).
+
+**Why It Matters**: Prevents re-debating past decisions and helps new contributors understand "why" not just "what."
+
+**Expected Impact**: Low (maintainability)
+
+**Effort**: Small (ongoing documentation)
+
+---
+
 ### 10. FAQ Expansion
 
 **Status**: Current FAQ has 7 questions; could expand if needed
