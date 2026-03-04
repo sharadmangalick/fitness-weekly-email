@@ -92,6 +92,7 @@ export interface Database {
           custom_distance_miles: number | null
           target_weekly_mileage: number | null
           current_weekly_mileage: number
+          runs_per_week: number | null
           experience_level: 'beginner' | 'intermediate' | 'advanced'
           preferred_long_run_day: 'saturday' | 'sunday'
           taper_weeks: number
@@ -113,6 +114,7 @@ export interface Database {
           custom_distance_miles?: number | null
           target_weekly_mileage?: number | null
           current_weekly_mileage?: number
+          runs_per_week?: number | null
           experience_level?: 'beginner' | 'intermediate' | 'advanced'
           preferred_long_run_day?: 'saturday' | 'sunday'
           taper_weeks?: number
@@ -134,6 +136,7 @@ export interface Database {
           custom_distance_miles?: number | null
           target_weekly_mileage?: number | null
           current_weekly_mileage?: number
+          runs_per_week?: number | null
           experience_level?: 'beginner' | 'intermediate' | 'advanced'
           preferred_long_run_day?: 'saturday' | 'sunday'
           taper_weeks?: number

@@ -77,14 +77,15 @@ function determineRecoveryStatus(analysis: AnalysisResults): RecoveryStatus {
 function buildHealthSnapshot(analysis: AnalysisResults, platform?: 'garmin' | 'strava'): HealthMetric[] {
   const snapshot: HealthMetric[] = []
 
-  if (analysis.resting_hr.available) {
+  // Only show Resting HR for Garmin users — Strava cannot measure true resting HR
+  if (analysis.resting_hr.available && platform !== 'strava') {
     const changeStr = analysis.resting_hr.change
       ? `${analysis.resting_hr.change > 0 ? '+' : ''}${analysis.resting_hr.change} from baseline`
       : ''
     snapshot.push({
       metric: 'Resting HR',
-      value: `${analysis.resting_hr.current || 'N/A'} bpm${platform === 'strava' ? ' (est.)' : ''}`,
-      detail: platform === 'strava' ? 'estimated from activities' : changeStr,
+      value: `${analysis.resting_hr.current || 'N/A'} bpm`,
+      detail: changeStr,
       status: analysis.resting_hr.status || 'normal',
       emoji: getStatusEmoji(analysis.resting_hr.status || 'normal'),
     })
@@ -414,6 +415,7 @@ function generatePlanExplanationHtml(explanation: PlanExplanation, totalMiles: n
     taper: 'Taper phase',
     race_week: 'Race week',
     maintenance: 'Maintenance',
+    recovery: 'Injury recovery',
   }
 
   const bullets: string[] = []

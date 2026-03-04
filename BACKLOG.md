@@ -2,7 +2,7 @@
 
 This file tracks ideas and features discussed but not yet implemented. Items are organized by priority tier and include context to help decide what to work on next.
 
-Last Updated: 2026-02-20
+Last Updated: 2026-03-03
 
 ---
 
@@ -221,7 +221,181 @@ Last Updated: 2026-02-20
 
 ---
 
+### 20. Mobile UX Audit & Fixes
+
+**Status**: Ready to implement
+
+**Source**: User testing feedback (2026-03-03)
+
+**Description**: On mobile (iOS Safari ~375px), the goal summary box is cut off — content that should be on a white background appears on gray. Multiple components have layout issues on narrow screens.
+
+**Why It Matters**:
+- 60%+ of traffic is mobile
+- Broken mobile layouts directly hurt conversion and trust
+- Goal wizard summary, plan preview, and dashboard all affected
+
+**Key Issues**:
+1. Goal summary box overflows white card area on mobile (needs overflow/scroll fix or reduced padding)
+2. Plan preview daily items (`flex justify-between`) squash workout titles on narrow screens
+3. Dashboard goals grid `gap-6` is too large for mobile 2-column layout
+4. Training plan header (title + refresh button) doesn't stack on mobile
+5. Onboarding modal `my-8` margin + `max-h-[90vh]` too tight on small phones
+
+**Files to Fix**:
+- `/components/GoalWizard.tsx` — Summary box layout, modal sizing (`max-w-lg` + `p-4` + `my-8`)
+- `/components/Onboarding/StepPlanPreview.tsx` — Daily plan items use `flex justify-between` with no wrapping
+- `/app/dashboard/page.tsx` (lines 570-602) — Training goals grid
+- `/components/TrainingPlanView.tsx` — Header layout
+
+**Expected Impact**: High (60%+ traffic is mobile)
+
+**Effort**: 3-4 hours
+
+**Next Step**: Test each component at 375px width; fix layout overflow, wrapping, and spacing issues
+
+---
+
+### 22. Don't Report Resting HR for Strava-Only Users
+
+**Status**: ✅ COMPLETED (2026-03-03)
+
+**Source**: User testing feedback (2026-03-03)
+
+**Description**: Strava only records HR during activities. The current code estimates "resting HR" as the minimum average HR from running activities — which is NOT resting HR. This is fundamentally inaccurate and misleading. The analyzer then uses this fake RHR for recovery assessment and volume adjustments.
+
+**Why It Matters**:
+- Displays misleading health data to users (erodes trust)
+- Drives incorrect training adaptations (volume adjustments based on fake elevated RHR)
+- Strava simply cannot provide resting HR — pretending otherwise is wrong
+
+**Key Issues**:
+1. Strava adapter (`getHeartRateData()`) sets `resting_hr: minAvgHr` — this is activity HR, not resting HR
+2. Analyzer (lines 216-246) uses this for recovery assessment
+3. Adaptations rule 1 (lines 140-155) reduces volume 10% based on "elevated RHR" — wrong for Strava users
+4. Email shows RHR with "(est.)" label — misleading
+
+**Files to Fix**:
+- `/lib/platforms/strava/adapter.ts` — Stop reporting `resting_hr` or rename to `activity_min_hr`
+- `/lib/training/analyzer.ts` — Skip RHR-based recovery assessment for Strava users
+- `/lib/training/adaptations.ts` — Don't apply RHR-based volume adjustments for Strava users
+- `/lib/training/emailer.ts` — Don't show "Resting Heart Rate" metric for Strava-only users
+
+**Expected Impact**: High (prevents incorrect training adjustments and misleading data)
+
+**Effort**: 2-3 hours
+
+**Next Step**: Update Strava adapter to stop reporting resting_hr; add platform checks in analyzer and adaptations
+
+---
+
+### 23. Training Plan — Add Run Frequency Support
+
+**Status**: ✅ COMPLETED (2026-03-03)
+
+**Source**: User testing feedback (2026-03-03)
+
+**Description**: The planner generates 5-6 run days per week for everyone regardless of actual running frequency. A user who runs 2x/week at 5mi each (10mi total) gets a plan spreading miles across 6 days — impractical and doesn't match their lifestyle.
+
+**Why It Matters**:
+- Directly addresses user complaint about plan impracticality
+- Plans that don't match reality get ignored — hurting retention
+- Core plan quality issue
+
+**Key Issues**:
+1. `generateDailyPlan()` (lines 149-305) hardcodes a 7-day structure with 5-6 run days
+2. No way for users to specify preferred run frequency
+3. Total mileage gets distributed too thinly across too many days
+
+**Implementation**:
+1. Add `runs_per_week` field to `training_configs` table (default: null → current 5-6 day behavior)
+2. Add step in GoalWizard: "How many days per week do you run?" (2-7)
+3. Update `generateDailyPlan()` to distribute miles across preferred run days, rest on remaining days
+4. For 2-3 day/week runners: prioritize one long run + easy runs, skip speed work initially
+
+**Files to Fix**:
+- `/lib/training/planner.ts` — `generateDailyPlan()` frequency logic
+- `/components/GoalWizard.tsx` — New input for runs per week
+- `/lib/database.types.ts` — `training_configs` table type update
+- Database migration for new `runs_per_week` column
+
+**Expected Impact**: High (core plan quality, directly addresses user feedback)
+
+**Effort**: 6-8 hours (schema change, UI, planner logic)
+
+**Next Step**: Add database column; add GoalWizard input; update planner to respect frequency
+
+---
+
+### 24. Training Plan — Special Handling for "Return from Injury" Goal
+
+**Status**: ✅ COMPLETED (2026-03-03)
+
+**Source**: User testing feedback (2026-03-03)
+
+**Description**: `return_from_injury` falls through to the generic 'build' phase (multiplier 1.0) in the planner. There are NO safety constraints: no reduced volume, no conservative progression, no extended recovery. A user set 10mi/week + injury recovery but got a 19-mile/6-day plan (nearly 2x their stated mileage).
+
+**Why It Matters**:
+- **Safety issue** — bad plans for injury recovery could cause reinjury
+- Trust-destroying when the app doubles your stated mileage for an injury recovery goal
+- Shows the planner isn't actually adapting to goal type
+
+**Key Issues**:
+1. `return_from_injury` maps to generic 'build' phase (multiplier 1.0) at planner.ts line 501-505
+2. No safety cap — first week can exceed stated `current_weekly_mileage`
+3. Speed work and tempo runs still included in injury recovery plans
+4. No conservative progression rule (10% weekly increase standard)
+
+**Implementation**:
+1. Add `'recovery'` training phase with conservative multiplier (0.7-0.8)
+2. Map `return_from_injury` to `'recovery'` phase
+3. Recovery phase: NO speed work, NO tempo — easy runs and rest only
+4. Cap first week at or below stated `current_weekly_mileage` (never exceed it)
+5. Add 10% weekly mileage increase rule for injury recovery
+6. Reduce long run percentage (0.25 instead of 0.30)
+7. Add more rest days for recovery plans
+
+**Files to Fix**:
+- `/lib/training/planner.ts` — Phase assignment (line 501-505), mileage calculation (lines 516-520), `generateDailyPlan()` workout selection
+
+**Expected Impact**: High (safety issue — prevents potential reinjury)
+
+**Effort**: 4-5 hours
+
+**Next Step**: Add recovery phase; map injury goal to it; add safety caps and conservative progression
+
+---
+
 ## 🟡 Medium Priority - Quick Wins
+
+### 21. Update Homepage Messaging for Non-Race Runners
+
+**Status**: Ready to implement
+
+**Source**: User testing feedback (2026-03-03)
+
+**Description**: Landing page messaging heavily emphasizes race training ("5K, 10K, half marathon, marathon", "Set Your Race Goal", "Race-Ready Plans"). Users who run for general fitness or base building may not realize the app serves them — even though the goal wizard already supports fitness goals.
+
+**Why It Matters**:
+- Broadens addressable audience beyond race-focused runners
+- Goal wizard already supports fitness goals (build mileage, maintain fitness, base building, injury recovery, get faster) but the landing page doesn't communicate this
+- User feedback: site feels race-only
+
+**Specific Changes**:
+1. Hero subheading: Add mention of general fitness alongside race goals
+2. "How It Works" step 2: Change "Set Your Race Goal" → "Set Your Goal" (cover race and fitness)
+3. Features card: Rename "Race-Ready Plans" → "Plans That Fit Your Goals" (mention base building, injury recovery, etc.)
+4. Consider adding a fitness-focused example to email preview or toggle between race/fitness examples
+
+**Files to Fix**:
+- `/app/page.tsx` — Hero section, "How It Works" step 2, Features section, FAQ
+
+**Expected Impact**: Medium (broadens addressable audience)
+
+**Effort**: 2-3 hours
+
+**Next Step**: Update landing page copy to be inclusive of non-race runners
+
+---
 
 ### 3. Social Proof Numbers
 

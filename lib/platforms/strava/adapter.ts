@@ -157,8 +157,9 @@ export class StravaAdapter implements FitnessPlatform {
   /**
    * Extract heart rate data from activities
    *
-   * Since Strava doesn't provide daily HR data, we extract what we can
-   * from activities and aggregate by day
+   * Since Strava only records HR during activities, we do NOT report resting_hr.
+   * Strava activity HR is fundamentally different from resting HR and using it
+   * as a proxy leads to incorrect recovery assessments and training adjustments.
    */
   async getHeartRateData(tokens: PlatformTokens, days: number): Promise<HeartRateData[]> {
     const activities = await this.getActivities(tokens, days)
@@ -178,16 +179,14 @@ export class StravaAdapter implements FitnessPlatform {
       }
     }
 
-    // Convert to HeartRateData array
+    // Convert to HeartRateData array — resting_hr intentionally set to 0
+    // so it gets filtered out by the analyzer (resting_hr > 0 check)
     const result: HeartRateData[] = []
     hrByDate.forEach((data, date) => {
       if (data.avgHr.length > 0) {
-        // Use the lowest average HR from activities as a rough "resting" estimate
-        // This is not accurate but gives some data point
-        const minAvgHr = Math.min(...data.avgHr)
         result.push({
           date,
-          resting_hr: minAvgHr, // Not accurate but best we can do
+          resting_hr: 0, // Strava cannot measure resting HR — do not report
           max_hr: data.maxHr.length > 0 ? Math.max(...data.maxHr) : undefined,
           avg_hr: Math.round(data.avgHr.reduce((a, b) => a + b, 0) / data.avgHr.length),
         })

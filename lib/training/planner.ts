@@ -27,6 +27,7 @@ const PHASE_MULTIPLIERS: Record<string, number> = {
   peak: 1.1,
   taper: 0.6,
   race_week: 0.3,
+  recovery: 0.75,
 }
 
 // Intensity multipliers for user preference
@@ -43,6 +44,7 @@ const LONG_RUN_PCT: Record<string, number> = {
   peak: 0.32,
   taper: 0.25,
   race_week: 0.15,
+  recovery: 0.25,
 }
 
 export interface WeekProjection {
@@ -155,7 +157,8 @@ function generateDailyPlan(
   goalType: string,
   raceDistance: number,
   unit: DistanceUnit = 'mi',
-  userRaceName?: string | null
+  userRaceName?: string | null,
+  runsPerWeek?: number | null
 ): DayPlan[] {
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
   const longRunIdx = longRunDay === 'saturday' ? 5 : 6
@@ -176,6 +179,19 @@ function generateDailyPlan(
   const easyPace = `${convertPace(pacePerMileMinutes + 1)}-${convertPace(pacePerMileMinutes + 2)}`
   const tempoPace = `${convertPace(pacePerMileMinutes)}-${convertPace(pacePerMileMinutes + 0.25)}`
   const displayTargetPace = convertPace(pacePerMileMinutes)
+
+  // Recovery phase: easy runs only, extra rest days, no speed work
+  if (phase === 'recovery') {
+    return generateRecoveryPlan(weeklyMiles, longRunMiles, longRunDay, easyPace, unitLabel)
+  }
+
+  // If user specified run frequency, use frequency-aware plan generation
+  if (runsPerWeek && runsPerWeek >= 2 && runsPerWeek <= 7) {
+    return generateFrequencyAwarePlan(
+      weeklyMiles, longRunMiles, longRunDay, phase, easyPace, tempoPace,
+      displayTargetPace, unitLabel, runsPerWeek, unit
+    )
+  }
 
   const remainingMiles = weeklyMiles - longRunMiles
   const includeTempo = phase === 'build' || phase === 'peak'
@@ -304,6 +320,179 @@ function generateDailyPlan(
   return plan
 }
 
+/**
+ * Generate a plan that respects the user's preferred run frequency.
+ * Distributes miles across the specified number of run days, fills rest on others.
+ * For 2-3 day runners: long run + easy runs, no speed work.
+ * For 4+ day runners: long run + easy runs + tempo if in build/peak.
+ */
+function generateFrequencyAwarePlan(
+  weeklyMiles: number,
+  longRunMiles: number,
+  longRunDay: string,
+  phase: string,
+  easyPace: string,
+  tempoPace: string,
+  targetPace: string,
+  unitLabel: string,
+  runsPerWeek: number,
+  unit: DistanceUnit
+): DayPlan[] {
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  const longRunIdx = longRunDay === 'saturday' ? 5 : 6
+  const remainingMiles = weeklyMiles - longRunMiles
+  const includeTempo = (phase === 'build' || phase === 'peak') && runsPerWeek >= 4
+
+  // Determine which day indices are run days (excluding long run day which is always a run)
+  // Spread run days evenly through the week
+  const runDayIndices = selectRunDays(runsPerWeek - 1, longRunIdx) // -1 because long run is always included
+
+  let tempoMiles = 0
+  let tempoDayIdx = -1
+  const easyRunCount = includeTempo ? runDayIndices.length - 1 : runDayIndices.length
+
+  if (includeTempo && runDayIndices.length > 0) {
+    tempoMiles = Math.min(Math.max(Math.round(remainingMiles * 0.25), 4), 7)
+    // Put tempo on Wednesday (idx 2) if available, otherwise first available run day
+    tempoDayIdx = runDayIndices.includes(2) ? 2 : runDayIndices[0]
+  }
+
+  const easyMilesTotal = remainingMiles - tempoMiles
+  const easyMilesPerRun = easyRunCount > 0 ? Math.max(Math.round(easyMilesTotal / easyRunCount), 2) : 0
+
+  const plan: DayPlan[] = []
+
+  for (let i = 0; i < 7; i++) {
+    const day = days[i]
+
+    if (i === longRunIdx) {
+      plan.push({
+        day,
+        workout_type: 'long_run',
+        title: 'Long Run',
+        distance_miles: longRunMiles,
+        description: `Start easy at ${easyPace}${unitLabel}, then settle into ${targetPace}${unitLabel} for the middle portion.`,
+        notes: 'Key workout — stay relaxed and focus on time on feet.',
+      })
+    } else if (i === tempoDayIdx && includeTempo) {
+      const warmCoolDist = unit === 'km' ? '1.6 km' : '1 mile'
+      const tempoCoreDist = unit === 'km'
+        ? displayDistance(tempoMiles - 2, unit, 0) + ' km'
+        : `${tempoMiles - 2} miles`
+      plan.push({
+        day,
+        workout_type: 'tempo',
+        title: 'Tempo Run',
+        distance_miles: tempoMiles,
+        description: `${warmCoolDist} warm-up, ${tempoCoreDist} at ${tempoPace}${unitLabel}, ${warmCoolDist} cool-down.`,
+        notes: 'Key workout — comfortably hard effort.',
+      })
+    } else if (runDayIndices.includes(i)) {
+      // Check if this is the last easy run before long run day — make it a shakeout
+      const isPreLongRun = (longRunDay === 'sunday' && i === 5) || (longRunDay === 'saturday' && i === 4)
+      plan.push({
+        day,
+        workout_type: 'easy',
+        title: isPreLongRun ? 'Pre-Long Run Shakeout' : 'Easy Run',
+        distance_miles: isPreLongRun ? Math.round(easyMilesPerRun * 0.6) : easyMilesPerRun,
+        description: isPreLongRun
+          ? `Short easy run at ${easyPace}${unitLabel}. Just loosening up for tomorrow.`
+          : `Easy pace at ${easyPace}${unitLabel}. Keep heart rate in Zone 2.`,
+        notes: null,
+      })
+    } else {
+      plan.push({
+        day,
+        workout_type: 'rest',
+        title: 'Rest Day',
+        distance_miles: null,
+        description: 'Rest or cross-training (swimming, cycling, yoga).',
+        notes: null,
+      })
+    }
+  }
+
+  return plan
+}
+
+/**
+ * Select which day indices should be run days, spread evenly through the week.
+ * Excludes the long run day index.
+ */
+function selectRunDays(count: number, longRunIdx: number): number[] {
+  // Preferred run day slots in priority order (Tue, Fri, Wed, Sat/Sun non-long-run, Thu, Mon)
+  const preferred = [1, 4, 2, 5, 6, 3, 0].filter(i => i !== longRunIdx)
+  return preferred.slice(0, count)
+}
+
+/**
+ * Generate a conservative recovery plan for return-from-injury goal.
+ * Only easy runs and rest — no speed work, no tempo.
+ * 3-4 run days max with extra rest.
+ */
+function generateRecoveryPlan(
+  weeklyMiles: number,
+  longRunMiles: number,
+  longRunDay: string,
+  easyPace: string,
+  unitLabel: string
+): DayPlan[] {
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  const longRunIdx = longRunDay === 'saturday' ? 5 : 6
+  const remainingMiles = weeklyMiles - longRunMiles
+
+  // Distribute remaining miles across 2-3 easy runs
+  const easyRunMiles = Math.max(Math.round(remainingMiles / 3), 2)
+
+  const plan: DayPlan[] = []
+
+  for (let i = 0; i < 7; i++) {
+    const day = days[i]
+
+    if (i === longRunIdx) {
+      plan.push({
+        day,
+        workout_type: 'long_run',
+        title: 'Easy Long Run',
+        distance_miles: longRunMiles,
+        description: `Keep it easy at ${easyPace}${unitLabel}. Walk breaks are fine — focus on time on feet, not pace.`,
+        notes: 'Recovery long run — listen to your body and stop if anything feels off.',
+      })
+    } else if (i === 1) {
+      plan.push({
+        day,
+        workout_type: 'easy',
+        title: 'Easy Run',
+        distance_miles: easyRunMiles,
+        description: `Easy pace at ${easyPace}${unitLabel}. Keep effort conversational.`,
+        notes: 'Start slow and check in with your body throughout.',
+      })
+    } else if (i === 4) {
+      plan.push({
+        day,
+        workout_type: 'easy',
+        title: 'Easy Run',
+        distance_miles: easyRunMiles,
+        description: `Easy pace at ${easyPace}${unitLabel}. Walk breaks are encouraged if needed.`,
+        notes: null,
+      })
+    } else {
+      plan.push({
+        day,
+        workout_type: 'rest',
+        title: 'Rest / Recovery',
+        distance_miles: null,
+        description: i === 2
+          ? 'Cross-training: swimming, cycling, or yoga. Avoid high-impact activities.'
+          : 'Complete rest. Focus on sleep, nutrition, and recovery.',
+        notes: i === 0 ? 'Recovery phase — rest days are essential for healing.' : null,
+      })
+    }
+  }
+
+  return plan
+}
+
 function generateTaperPlan(
   remainingMiles: number,
   longRunMiles: number,
@@ -417,7 +606,8 @@ function generateCoachingNotes(
   weeksToRace: number | null,
   goalType: string,
   recoveryAdjustment: number,
-  userRaceName?: string | null
+  userRaceName?: string | null,
+  runsPerWeek?: number | null
 ): string[] {
   const notes: string[] = []
 
@@ -426,6 +616,13 @@ function generateCoachingNotes(
     'marathon': 'Marathon', 'ultra': 'Ultra', 'custom': 'Race',
   }
   const raceName = userRaceName || raceNames[goalType] || 'race'
+
+  if (phase === 'recovery') {
+    notes.push('Recovery phase — easy runs only, no speed work. Focus on rebuilding safely with gradual progression.')
+    notes.push('Listen to your body. If anything feels off during a run, it\'s okay to stop or walk.')
+    notes.push('Rest days aren\'t lazy — they\'re when your body heals and gets stronger.')
+    return notes
+  }
 
   if (phase === 'peak') {
     notes.push(`Peak week with ${weeksToRace} weeks to ${raceName}. Quality over quantity - nail your long run and tempo.`)
@@ -444,7 +641,12 @@ function generateCoachingNotes(
   }
 
   if (phase === 'build' || phase === 'peak') {
-    notes.push('With 4-5 running days, every run has purpose: long run for endurance, tempo for race fitness, easy runs for recovery.')
+    const runDays = runsPerWeek || 5
+    if (runDays <= 3) {
+      notes.push(`With ${runDays} running days, focus on making each run count: long run for endurance, easy runs for recovery.`)
+    } else {
+      notes.push(`With ${runDays} running days, every run has purpose: long run for endurance, tempo for race fitness, easy runs for recovery.`)
+    }
   }
 
   notes.push('Rest days aren\'t lazy - they\'re when your body adapts and gets stronger. Use them wisely.')
@@ -502,6 +704,7 @@ export function generateTrainingPlan(
     ? getTrainingPhase(weeksToRace, taperWeeks)
     : config.goal_type === 'maintain_fitness' ? 'maintenance'
     : config.goal_type === 'get_faster' ? 'peak'
+    : config.goal_type === 'return_from_injury' ? 'recovery'
     : 'build'
 
   const baseMileage = config.current_weekly_mileage
@@ -516,6 +719,11 @@ export function generateTrainingPlan(
   let weeklyMiles = Math.round(baseMileage * phaseMultiplier * intensityMultiplier)
   if (recoveryAdjustment < 1.0) {
     weeklyMiles = Math.round(weeklyMiles * recoveryAdjustment)
+  }
+
+  // Safety cap for injury recovery: never exceed stated current mileage
+  if (phase === 'recovery') {
+    weeklyMiles = Math.min(weeklyMiles, baseMileage)
   }
 
   let longRunMiles = Math.round(weeklyMiles * longRunPct)
@@ -553,7 +761,8 @@ export function generateTrainingPlan(
     config.goal_type,
     raceDistance,
     distanceUnit,
-    config.race_name
+    config.race_name,
+    config.runs_per_week
   )
 
   // Apply structure changes from adaptations
@@ -573,7 +782,7 @@ export function generateTrainingPlan(
 
   const totalMiles = dailyPlan.reduce((sum, day) => sum + (day.distance_miles || 0), 0)
 
-  const coachingNotes = generateCoachingNotes(phase, weeksToRace, config.goal_type, recoveryAdjustment, config.race_name)
+  const coachingNotes = generateCoachingNotes(phase, weeksToRace, config.goal_type, recoveryAdjustment, config.race_name, config.runs_per_week)
   const recoveryRecommendations = generateRecoveryRecommendations(analysis, recoveryAdjustment)
 
   // Merge adaptation insights into coaching notes
@@ -588,11 +797,14 @@ export function generateTrainingPlan(
     '5k': '5K', '10k': '10K', 'half_marathon': 'Half Marathon',
     'marathon': 'Marathon', 'ultra': 'Ultra', 'build_mileage': 'Mileage Building',
     'get_faster': 'Speed Training', 'maintain_fitness': 'Fitness Maintenance', 'base_building': 'Base Building',
+    'return_from_injury': 'Injury Recovery',
   }
   const displayRaceName = config.race_name || raceNames[config.goal_type] || 'race'
 
   let focus = ''
-  if (recoveryAdjustment < 0.85) {
+  if (phase === 'recovery') {
+    focus = 'Injury recovery — conservative plan with easy runs only'
+  } else if (recoveryAdjustment < 0.85) {
     focus = 'Recovery focus - reduced volume due to fatigue indicators'
   } else if (phase === 'base') {
     focus = 'Building aerobic foundation with easy miles'

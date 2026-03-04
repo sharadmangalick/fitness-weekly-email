@@ -57,6 +57,7 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
   const [raceName, setRaceName] = useState(initialConfig?.race_name || '')
   const [customDistanceMiles, setCustomDistanceMiles] = useState(initialConfig?.custom_distance_miles || 10)
   const [taperWeeks, setTaperWeeks] = useState(initialConfig?.taper_weeks ?? 3)
+  const [runsPerWeek, setRunsPerWeek] = useState<number | null>(initialConfig?.runs_per_week ?? null)
   const [emailDay, setEmailDay] = useState(initialConfig?.email_day || 'sunday')
   const [emailEnabled, setEmailEnabled] = useState(initialConfig?.email_enabled ?? true)
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>(initialDistanceUnit)
@@ -100,6 +101,7 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
         custom_distance_miles: (goalType === 'custom' || goalType === 'ultra') ? customDistanceMiles : null,
         target_weekly_mileage: goalType === 'build_mileage' ? targetMileage : null,
         current_weekly_mileage: currentMileage,
+        runs_per_week: runsPerWeek,
         experience_level: experienceLevel,
         preferred_long_run_day: longRunDay,
         taper_weeks: goalCategory === 'race' ? taperWeeks : 3,
@@ -371,6 +373,28 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
           </div>
 
           <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              How many days per week do you run?
+            </label>
+            <select
+              value={runsPerWeek ?? ''}
+              onChange={(e) => setRunsPerWeek(e.target.value === '' ? null : parseInt(e.target.value))}
+              className="input-field"
+            >
+              <option value="">Auto (4-5 days)</option>
+              <option value="2">2 days</option>
+              <option value="3">3 days</option>
+              <option value="4">4 days</option>
+              <option value="5">5 days</option>
+              <option value="6">6 days</option>
+              <option value="7">7 days</option>
+            </select>
+            <p className="text-sm text-gray-500 mt-1">
+              Your plan will match your preferred schedule
+            </p>
+          </div>
+
+          <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Experience Level</label>
             <select
               value={experienceLevel}
@@ -498,6 +522,10 @@ export default function GoalWizard({ initialConfig, calculatedMileage, mileageCo
               <div className="flex justify-between">
                 <span className="text-gray-600">Weekly {distanceUnit === 'km' ? 'Volume' : 'Mileage'}</span>
                 <span className="font-medium">{displayDistance(currentMileage, distanceUnit, 0)} {distanceLabel(distanceUnit)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Run Frequency</span>
+                <span className="font-medium">{runsPerWeek ? `${runsPerWeek} days/week` : 'Auto (4-5 days)'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Email Day</span>
