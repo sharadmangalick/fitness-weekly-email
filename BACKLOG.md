@@ -54,142 +54,7 @@ Last Updated: 2026-03-03
 
 ### 2. Migrate Garmin Authentication to OAuth 2.0
 
-**Status**: ✅ COMPLETED (2026-03-03)
-
-**Description**: Replace current email/password authentication for Garmin Connect with official OAuth 2.0 flow. Users will authenticate directly on Garmin's website instead of entering credentials into RunPlan.
-
-**Why It Matters**:
-- **User feedback**: "It's not super trustworthy to type in my Garmin password into your site"
-- **Critical trust barrier**: Current password-based auth blocks signups
-- **Security best practice**: OAuth is industry standard, eliminates credential exposure
-- **Required for scale**: Garmin may restrict unofficial authentication methods
-- **Better user experience**: One-click connection vs manual credential entry
-- **Expected significant improvement** in Garmin connection completion rate
-
-**Current Problem**:
-- Using unofficial `garmin-connect` npm package that simulates browser login
-- Requires users to enter Garmin credentials directly into RunPlan (major red flag)
-- Even with security note explaining "we only store tokens," users rightfully hesitate
-- Creates unnecessary privacy concerns and liability
-
-**OAuth Solution**:
-- User clicks "Connect Garmin" → Redirects to Garmin's official login page
-- User authenticates on Garmin.com (never enters password on RunPlan)
-- User grants permission for specific data access
-- Garmin redirects back with OAuth code → Exchange for secure tokens
-- Same pattern as existing Strava integration (proven to work)
-
-**Prerequisites Completed**:
-- ✅ Privacy policy created and deployed (required for OAuth application)
-- ✅ Applied for Garmin Developer Program (waiting for approval)
-- ✅ Privacy policy includes OAuth disclosure language
-- ✅ Existing Strava OAuth implementation to use as reference
-
-**Context**:
-- User applied for Garmin Developer Program access on 2026-02-06
-- Privacy policy live at https://www.runplan.fun/privacy
-- Contact email: smangalick@gmail.com
-- Approval typically takes 2 business days
-- Business registration required (user has completed)
-
-**Expected Impact**: Very High
-- Eliminates #1 trust barrier for Garmin users
-- Significantly improves Garmin connection rate (current is likely low due to trust concerns)
-- Reduces liability (no longer handling Garmin passwords)
-- Aligns with industry standards (same as Strava, Apple, Google)
-- Builds foundation for future platform integrations
-
-**Files to Create**:
-- `/app/api/connect/garmin/route.ts` (OAuth initiation)
-- `/app/api/auth/callback/garmin/route.ts` (OAuth callback handler)
-
-**Files to Modify**:
-- `/lib/platforms/garmin/client.ts` (replace with OAuth API calls)
-- `/lib/platforms/garmin/adapter.ts` (update connect method)
-- `/components/GarminConnectModal.tsx` (remove or replace with OAuth button)
-- `/app/dashboard/page.tsx` (update Garmin connection UI)
-- `/lib/logging.ts` (add OAuth flow logging)
-
-**Files to Delete**:
-- Remove or archive password-based authentication code
-- Consider keeping as fallback during transition period
-
-**Dependencies**:
-- ⏳ Garmin Developer Program approval (in progress)
-- Garmin OAuth 2.0 credentials (Client ID, Client Secret)
-- Redirect URI configuration in Garmin developer portal
-- Understanding of Garmin Health API and Activity API scopes
-
-**Implementation Approach**:
-1. **Phase 1: Parallel Implementation**
-   - Keep existing password auth working
-   - Add OAuth flow alongside
-   - Test OAuth thoroughly before removing password method
-
-2. **Phase 2: Migration**
-   - Update UI to prefer OAuth (make it primary option)
-   - Keep password auth as "Advanced" option temporarily
-   - Monitor OAuth success rate
-
-3. **Phase 3: Full Cutover**
-   - Remove password authentication completely
-   - Update all documentation
-   - Notify existing users to reconnect via OAuth
-
-**API Scopes Needed**:
-- `activity-api`: Access to activities, workouts, training data
-- `health-api`: Sleep, heart rate, HRV, stress, body battery, VO2 max
-- Read-only access (no write permissions needed)
-
-**Testing Requirements**:
-- Desktop: Chrome, Firefox, Safari
-- Mobile: iOS Safari, Android Chrome
-- Test scenarios:
-  - New user connecting Garmin for first time
-  - Existing user reconnecting
-  - User denies permission (error handling)
-  - Token expiration and refresh
-  - Multiple concurrent OAuth flows
-  - Session timeout during OAuth
-
-**Migration Plan for Existing Users**:
-- Email notification: "Security upgrade - please reconnect your Garmin"
-- Dashboard banner: "Action required: Reconnect Garmin with secure OAuth"
-- Grace period: 30 days before disconnecting old auth
-- One-click reconnect flow
-
-**Success Metrics**:
-- [ ] Garmin connection attempt → completion rate (target: 80%+)
-- [ ] OAuth error rate (target: <5%)
-- [ ] Time to connect (target: <30 seconds)
-- [ ] User feedback sentiment improvement
-- [ ] Support tickets related to Garmin auth (target: decrease by 50%)
-
-**Security Improvements**:
-- ✅ Never handle Garmin passwords
-- ✅ OAuth tokens encrypted with AES-256
-- ✅ Token refresh handled automatically
-- ✅ User can revoke access from Garmin account settings
-- ✅ Audit trail of OAuth events
-- ✅ Compliance with OAuth 2.0 PKCE specification
-
-**Reference Implementation**:
-- Study existing Strava OAuth in `/lib/platforms/strava/`
-- Garmin OAuth docs: https://developer.garmin.com/gc-developer-program/
-- OAuth 2.0 PKCE spec: https://developerportal.garmin.com/sites/default/files/OAuth2PKCE_1.pdf
-
-**Blockers**:
-- None (prerequisites completed, just waiting for Garmin approval)
-
-**Next Steps (When Approved)**:
-1. Receive Garmin Developer credentials
-2. Create OAuth application in Garmin developer portal
-3. Configure redirect URIs
-4. Implement OAuth flow (follow Strava pattern)
-5. Test thoroughly
-6. Deploy to production
-7. Monitor success metrics
-8. Notify existing users to reconnect
+**Status**: ✅ COMPLETED (2026-03-03) — Replaced password-based auth with official OAuth 2.0 flow. See `docs/COMPLETED_WORK.md` for details.
 
 ---
 
@@ -222,178 +87,29 @@ Last Updated: 2026-03-03
 ---
 
 ### 20. Mobile UX Audit & Fixes
-
-**Status**: ✅ COMPLETED (2026-03-03)
-
-**Source**: User testing feedback (2026-03-03)
-
-**Description**: On mobile (iOS Safari ~375px), the goal summary box is cut off — content that should be on a white background appears on gray. Multiple components have layout issues on narrow screens.
-
-**Why It Matters**:
-- 60%+ of traffic is mobile
-- Broken mobile layouts directly hurt conversion and trust
-- Goal wizard summary, plan preview, and dashboard all affected
-
-**Key Issues**:
-1. Goal summary box overflows white card area on mobile (needs overflow/scroll fix or reduced padding)
-2. Plan preview daily items (`flex justify-between`) squash workout titles on narrow screens
-3. Dashboard goals grid `gap-6` is too large for mobile 2-column layout
-4. Training plan header (title + refresh button) doesn't stack on mobile
-5. Onboarding modal `my-8` margin + `max-h-[90vh]` too tight on small phones
-
-**Files to Fix**:
-- `/components/GoalWizard.tsx` — Summary box layout, modal sizing (`max-w-lg` + `p-4` + `my-8`)
-- `/components/Onboarding/StepPlanPreview.tsx` — Daily plan items use `flex justify-between` with no wrapping
-- `/app/dashboard/page.tsx` (lines 570-602) — Training goals grid
-- `/components/TrainingPlanView.tsx` — Header layout
-
-**Expected Impact**: High (60%+ traffic is mobile)
-
-**Effort**: 3-4 hours
-
-**Next Step**: Test each component at 375px width; fix layout overflow, wrapping, and spacing issues
+**Status**: ✅ COMPLETED (2026-03-03) — Fixed modal margins, summary stacking, grid spacing, header stacking across GoalWizard, StepPlanPreview, dashboard, TrainingPlanView.
 
 ---
 
 ### 22. Don't Report Resting HR for Strava-Only Users
-
-**Status**: ✅ COMPLETED (2026-03-03)
-
-**Source**: User testing feedback (2026-03-03)
-
-**Description**: Strava only records HR during activities. The current code estimates "resting HR" as the minimum average HR from running activities — which is NOT resting HR. This is fundamentally inaccurate and misleading. The analyzer then uses this fake RHR for recovery assessment and volume adjustments.
-
-**Why It Matters**:
-- Displays misleading health data to users (erodes trust)
-- Drives incorrect training adaptations (volume adjustments based on fake elevated RHR)
-- Strava simply cannot provide resting HR — pretending otherwise is wrong
-
-**Key Issues**:
-1. Strava adapter (`getHeartRateData()`) sets `resting_hr: minAvgHr` — this is activity HR, not resting HR
-2. Analyzer (lines 216-246) uses this for recovery assessment
-3. Adaptations rule 1 (lines 140-155) reduces volume 10% based on "elevated RHR" — wrong for Strava users
-4. Email shows RHR with "(est.)" label — misleading
-
-**Files to Fix**:
-- `/lib/platforms/strava/adapter.ts` — Stop reporting `resting_hr` or rename to `activity_min_hr`
-- `/lib/training/analyzer.ts` — Skip RHR-based recovery assessment for Strava users
-- `/lib/training/adaptations.ts` — Don't apply RHR-based volume adjustments for Strava users
-- `/lib/training/emailer.ts` — Don't show "Resting Heart Rate" metric for Strava-only users
-
-**Expected Impact**: High (prevents incorrect training adjustments and misleading data)
-
-**Effort**: 2-3 hours
-
-**Next Step**: Update Strava adapter to stop reporting resting_hr; add platform checks in analyzer and adaptations
+**Status**: ✅ COMPLETED (2026-03-03) — Stopped reporting fake RHR from activity data. Removed RHR-based recovery adjustments for Strava users.
 
 ---
 
 ### 23. Training Plan — Add Run Frequency Support
-
-**Status**: ✅ COMPLETED (2026-03-03)
-
-**Source**: User testing feedback (2026-03-03)
-
-**Description**: The planner generates 5-6 run days per week for everyone regardless of actual running frequency. A user who runs 2x/week at 5mi each (10mi total) gets a plan spreading miles across 6 days — impractical and doesn't match their lifestyle.
-
-**Why It Matters**:
-- Directly addresses user complaint about plan impracticality
-- Plans that don't match reality get ignored — hurting retention
-- Core plan quality issue
-
-**Key Issues**:
-1. `generateDailyPlan()` (lines 149-305) hardcodes a 7-day structure with 5-6 run days
-2. No way for users to specify preferred run frequency
-3. Total mileage gets distributed too thinly across too many days
-
-**Implementation**:
-1. Add `runs_per_week` field to `training_configs` table (default: null → current 5-6 day behavior)
-2. Add step in GoalWizard: "How many days per week do you run?" (2-7)
-3. Update `generateDailyPlan()` to distribute miles across preferred run days, rest on remaining days
-4. For 2-3 day/week runners: prioritize one long run + easy runs, skip speed work initially
-
-**Files to Fix**:
-- `/lib/training/planner.ts` — `generateDailyPlan()` frequency logic
-- `/components/GoalWizard.tsx` — New input for runs per week
-- `/lib/database.types.ts` — `training_configs` table type update
-- Database migration for new `runs_per_week` column
-
-**Expected Impact**: High (core plan quality, directly addresses user feedback)
-
-**Effort**: 6-8 hours (schema change, UI, planner logic)
-
-**Next Step**: Add database column; add GoalWizard input; update planner to respect frequency
+**Status**: ✅ COMPLETED (2026-03-03) — Added `runs_per_week` field, GoalWizard input, and planner logic to distribute miles across preferred run days.
 
 ---
 
 ### 24. Training Plan — Special Handling for "Return from Injury" Goal
-
-**Status**: ✅ COMPLETED (2026-03-03)
-
-**Source**: User testing feedback (2026-03-03)
-
-**Description**: `return_from_injury` falls through to the generic 'build' phase (multiplier 1.0) in the planner. There are NO safety constraints: no reduced volume, no conservative progression, no extended recovery. A user set 10mi/week + injury recovery but got a 19-mile/6-day plan (nearly 2x their stated mileage).
-
-**Why It Matters**:
-- **Safety issue** — bad plans for injury recovery could cause reinjury
-- Trust-destroying when the app doubles your stated mileage for an injury recovery goal
-- Shows the planner isn't actually adapting to goal type
-
-**Key Issues**:
-1. `return_from_injury` maps to generic 'build' phase (multiplier 1.0) at planner.ts line 501-505
-2. No safety cap — first week can exceed stated `current_weekly_mileage`
-3. Speed work and tempo runs still included in injury recovery plans
-4. No conservative progression rule (10% weekly increase standard)
-
-**Implementation**:
-1. Add `'recovery'` training phase with conservative multiplier (0.7-0.8)
-2. Map `return_from_injury` to `'recovery'` phase
-3. Recovery phase: NO speed work, NO tempo — easy runs and rest only
-4. Cap first week at or below stated `current_weekly_mileage` (never exceed it)
-5. Add 10% weekly mileage increase rule for injury recovery
-6. Reduce long run percentage (0.25 instead of 0.30)
-7. Add more rest days for recovery plans
-
-**Files to Fix**:
-- `/lib/training/planner.ts` — Phase assignment (line 501-505), mileage calculation (lines 516-520), `generateDailyPlan()` workout selection
-
-**Expected Impact**: High (safety issue — prevents potential reinjury)
-
-**Effort**: 4-5 hours
-
-**Next Step**: Add recovery phase; map injury goal to it; add safety caps and conservative progression
+**Status**: ✅ COMPLETED (2026-03-03) — Added recovery phase (0.7x multiplier), no speed work, conservative progression, safety caps.
 
 ---
 
 ## 🟡 Medium Priority - Quick Wins
 
 ### 21. Update Homepage Messaging for Non-Race Runners
-
-**Status**: ✅ COMPLETED (2026-03-03)
-
-**Source**: User testing feedback (2026-03-03)
-
-**Description**: Landing page messaging heavily emphasizes race training ("5K, 10K, half marathon, marathon", "Set Your Race Goal", "Race-Ready Plans"). Users who run for general fitness or base building may not realize the app serves them — even though the goal wizard already supports fitness goals.
-
-**Why It Matters**:
-- Broadens addressable audience beyond race-focused runners
-- Goal wizard already supports fitness goals (build mileage, maintain fitness, base building, injury recovery, get faster) but the landing page doesn't communicate this
-- User feedback: site feels race-only
-
-**Specific Changes**:
-1. Hero subheading: Add mention of general fitness alongside race goals
-2. "How It Works" step 2: Change "Set Your Race Goal" → "Set Your Goal" (cover race and fitness)
-3. Features card: Rename "Race-Ready Plans" → "Plans That Fit Your Goals" (mention base building, injury recovery, etc.)
-4. Consider adding a fitness-focused example to email preview or toggle between race/fitness examples
-
-**Files to Fix**:
-- `/app/page.tsx` — Hero section, "How It Works" step 2, Features section, FAQ
-
-**Expected Impact**: Medium (broadens addressable audience)
-
-**Effort**: 2-3 hours
-
-**Next Step**: Update landing page copy to be inclusive of non-race runners
+**Status**: ✅ COMPLETED (2026-03-03) — Broadened landing page copy to include base building, injury recovery, general fitness goals.
 
 ---
 
@@ -618,32 +334,7 @@ Last Updated: 2026-03-03
 ---
 
 ### 8. Sample Week Comparison
-
-**Status**: ✅ COMPLETED (2026-02-06)
-
-**Description**: Side-by-side comparison showing "Generic Training Plan" vs "RunPlan.fun Personalized Plan" for the same week.
-
-**Why It Matters**:
-- Clearly demonstrates value proposition
-- Shows what makes RunPlan different
-- Visual proof of personalization
-
-**Implementation Ideas**:
-```
-WITHOUT RUNPLAN          |  WITH RUNPLAN
-────────────────────────|─────────────────────
-Monday: Rest            |  Monday: Rest (recovering from weekend long run)
-Tuesday: 5 miles        |  Tuesday: Easy 4mi (adjusted for last week's fatigue)
-Wednesday: Speed work   |  Wednesday: 6x400m @ 7:30 pace (based on your PR)
-...                     |  ...
-```
-
-**Expected Impact**: Low-Medium (8-12% understanding increase)
-
-**Files Modified**:
-- `/app/page.tsx`
-
-**Dependencies**: None
+**Status**: ✅ COMPLETED (2026-02-06) — Side-by-side "Generic vs Personalized" plan comparison on landing page.
 
 ---
 
@@ -796,60 +487,17 @@ Add new ideas here with brief description, then organize into appropriate priori
 
 <!-- Add new ideas below this line -->
 
-### 11. Fix Ultra Marathon Distance Display
-**Status**: ✅ COMPLETED (2026-02-20)
-**Source**: User feedback (2026-02-20)
-**Quick Summary**: Ultra marathon is technically longer than 26.2m/42.2km, and many ultras are 50km not 50mi. The "50+ miles" label is misleading. Should say "50m+" or show both units (e.g. "50K / 50mi+").
-**Why**: Accuracy matters to experienced runners; current display is technically wrong
-**Effort**: Small (label fix)
-**Next Step**: Update RACE_DISTANCES and GoalWizard display for ultra option
+### Completed Items (see `docs/COMPLETED_WORK.md` for details)
+- ✅ #8: Sample Week Comparison (2026-02-06)
+- ✅ #11: Ultra Marathon Distance Display (2026-02-20)
+- ✅ #12: "Get Faster" Fitness Goal (2026-02-20)
+- ✅ #14: Custom Race Distance & Race Name (2026-02-20)
+- ✅ #15: Dual Unit Display (2026-02-20)
+- ✅ #16: Configurable Taper (2026-02-20)
+- ✅ #18: Health Snapshot Empty States (2026-02-20)
 
-### 12. Add "Get Faster" Fitness Goal
-**Status**: ✅ COMPLETED (2026-02-20)
-**Source**: User feedback (2026-02-20)
-**Quick Summary**: Add a "Get Faster" option under non-race fitness goals. Currently only "Build Mileage", "Maintain Fitness", "Base Building", and "Return from Injury" exist.
-**Why**: Speed improvement is a common training goal that isn't represented. User explicitly said "Hitting a goal time is usually my main focus, so the most value to me is finding ways to do that with training."
-**Effort**: Medium (new goal type + planner logic for speed-focused plans)
-**Next Step**: Design what a speed-focused plan looks like (more intervals, tempo work, pace-specific workouts)
-
-### 13. Add Speed Work / Pace-Specific Workouts to Plans
-**Status**: ✅ Promoted to 🟡 Medium Priority (see above)
-
-### 14. Custom Race Distance & Race Event Name
-**Status**: ✅ COMPLETED (2026-02-20)
-**Source**: User feedback (2026-02-20)
-**Quick Summary**: Allow custom race distance (not just preset 5K/10K/HM/M/Ultra) and let users enter their actual race name (e.g. "Vancouver Marathon"). Could show the race name in emails and dashboard.
-**Why**: Personalization and accuracy; many races are non-standard distances
-**Effort**: Small-Medium (add custom distance input + race name field)
-**Next Step**: Add optional `race_name` field to training_configs; add custom distance input in GoalWizard
-
-### 15. Show Both Units in Race Distance Labels
-**Status**: ✅ COMPLETED (2026-02-20)
-**Source**: User feedback (2026-02-20)
-**Quick Summary**: Even when using km, show both units for race distances: "Marathon (26.2 miles / 42.2km)". Canadians/Brits use "mileage" as a term but measure in km.
-**Why**: Runners commonly reference both units; dual display is clearest
-**Effort**: Small (GoalWizard label update)
-**Next Step**: Update race distance options to show both units regardless of preference
-
-### 16. Configurable Taper Length
-**Status**: ✅ COMPLETED (2026-02-20)
-**Source**: User feedback (2026-02-20)
-**Quick Summary**: Current taper is 3 weeks. User feedback: "Would be good to be able to tune the taper OR maybe understand why 3 weeks. Personally I have only ever done 1 or 2 week taper, and have had best success with 1 week." Consider making taper duration configurable or at least explain the reasoning.
-**Why**: Taper length is highly individual; experienced runners have strong preferences
-**Effort**: Medium (add taper_weeks config option, update planner phase logic)
-**Next Step**: Add taper length selector in GoalWizard (1/2/3 weeks); update getTrainingPhase() to use configurable taper
-
-### 17. Non-Negotiable Workouts / Plan Adaptation
-**Status**: ✅ Promoted to 🟢 Low Priority (see above)
-
-### 18. Health Snapshot Not Populating / Sync Feedback
-**Status**: ✅ COMPLETED (2026-02-20)
-**Source**: User feedback (2026-02-20)
-**Quick Summary**: User sees "Health Snapshot" section but it's empty. Unclear if/when it will populate. Need better feedback about what data is syncing and when metrics will appear.
-**Why**: Empty sections erode trust; users need to understand the data pipeline
-**Effort**: Small-Medium (add empty state messaging, sync status indicators)
-**Next Step**: Add helpful empty states ("Syncing your health data... metrics will appear after 24-48 hours of wearing your device") and check if Strava users get any health metrics at all
-
-### 19. Training Insights / Physiological Feedback
-**Status**: ✅ Promoted to 🔴 High Priority (see above)
+### Promoted Items
+- #13: Speed Work → 🟡 Medium Priority (see above)
+- #17: Non-Negotiable Workouts → 🟢 Low Priority (see above)
+- #19: Training Insights → 🔴 High Priority (see above)
 
