@@ -12,6 +12,7 @@ import { Resend } from 'resend'
 import type { GarminOAuthTokens, StravaTokens, AllPlatformData } from '@/lib/platforms/interface'
 import type { TrainingConfig, UserProfile, PlatformConnection } from '@/lib/database.types'
 import type { DistanceUnit } from '@/lib/platforms/interface'
+import { RACE_DISTANCES } from '@/lib/training/constants'
 
 // Lazy initialize Resend to avoid build-time errors
 let resend: Resend | null = null
@@ -216,7 +217,6 @@ export async function POST(request: NextRequest) {
         // Parse goal pace for pace personalization
         let goalPaceMinPerMile: number | null = null
         if (config.goal_time_minutes) {
-          const RACE_DISTANCES: Record<string, number> = { '5k': 3.1, '10k': 6.2, 'half_marathon': 13.1, 'marathon': 26.2 }
           const dist = (config.goal_type === 'custom' || config.goal_type === 'ultra') && config.custom_distance_miles
             ? config.custom_distance_miles
             : RACE_DISTANCES[config.goal_type] || 26.2

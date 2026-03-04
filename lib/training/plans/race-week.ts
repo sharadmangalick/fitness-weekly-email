@@ -5,6 +5,7 @@
  */
 
 import type { DayPlan } from '../planner'
+import { RACE_NAMES } from '../constants'
 
 export function generateRaceWeekPlan(
   goalType: string,
@@ -13,15 +14,7 @@ export function generateRaceWeekPlan(
   unitLabel: string = '/mile',
   userRaceName?: string | null
 ): DayPlan[] {
-  const raceNames: Record<string, string> = {
-    '5k': '5K',
-    '10k': '10K',
-    'half_marathon': 'Half Marathon',
-    'marathon': 'Marathon',
-    'ultra': 'Ultra',
-    'custom': 'Race',
-  }
-  const raceName = userRaceName || raceNames[goalType] || 'Race'
+  const raceName = userRaceName || RACE_NAMES[goalType] || 'Race'
 
   // Adjust shakeout distances based on race distance
   let shakeout1 = 3, shakeout2 = 2, shakeout3 = 2

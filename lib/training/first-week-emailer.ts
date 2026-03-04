@@ -10,6 +10,7 @@ import type { AnalysisResults } from './analyzer'
 import type { TrainingConfig, UserProfile } from '../database.types'
 import type { AllPlatformData, DistanceUnit } from '../platforms/interface'
 import { displayDistance, distanceLabel } from '../platforms/interface'
+import { RACE_NAMES } from './constants'
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -59,21 +60,7 @@ function calculateWeeksUntilRace(goalDate: string | null): number | null {
 }
 
 function getRaceName(goalType: string, goalTarget: string | null): string {
-  const raceNames: Record<string, string> = {
-    '5k': '5K',
-    '10k': '10K',
-    'half_marathon': 'Half Marathon',
-    'marathon': 'Marathon',
-    'ultra': 'Ultra',
-    'custom': 'Race',
-    'build_mileage': 'Mileage Building',
-    'get_faster': 'Speed Training',
-    'maintain_fitness': 'Fitness Maintenance',
-    'base_building': 'Base Building',
-    'return_from_injury': 'Return to Running',
-  }
-
-  return goalTarget || raceNames[goalType] || 'Training'
+  return goalTarget || RACE_NAMES[goalType] || 'Training'
 }
 
 /**

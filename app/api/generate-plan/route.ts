@@ -9,6 +9,7 @@ import { generateTrainingPlan, TrainingPlan, calculateRecoveryAdjustment, getRec
 import { computeAdaptations } from '@/lib/training/adaptations'
 import type { GarminOAuthTokens, StravaTokens, AllPlatformData, DistanceUnit } from '@/lib/platforms/interface'
 import type { TrainingConfig } from '@/lib/database.types'
+import { RACE_DISTANCES, PHASE_MULTIPLIERS, INTENSITY_MULTIPLIERS } from '@/lib/training/constants'
 
 // Cache validity in days
 const CACHE_VALIDITY_DAYS = 7
@@ -167,7 +168,6 @@ export async function POST(request: NextRequest) {
     // Parse goal pace for pace personalization
     let goalPaceMinPerMile: number | null = null
     if (trainingConfig.goal_time_minutes) {
-      const RACE_DISTANCES: Record<string, number> = { '5k': 3.1, '10k': 6.2, 'half_marathon': 13.1, 'marathon': 26.2 }
       const dist = (trainingConfig.goal_type === 'custom' || trainingConfig.goal_type === 'ultra') && trainingConfig.custom_distance_miles
         ? trainingConfig.custom_distance_miles
         : RACE_DISTANCES[trainingConfig.goal_type] || 26.2
@@ -204,12 +204,6 @@ export async function POST(request: NextRequest) {
       const trainingConfig = config as TrainingConfig
 
       // Calculate original mileage (without recovery adjustment)
-      const PHASE_MULTIPLIERS: Record<string, number> = {
-        base: 0.85, build: 1.0, peak: 1.1, taper: 0.6, race_week: 0.3,
-      }
-      const INTENSITY_MULTIPLIERS: Record<string, number> = {
-        conservative: 0.85, normal: 1.0, aggressive: 1.15,
-      }
       const phaseMultiplier = PHASE_MULTIPLIERS[plan.week_summary.training_phase] || 1.0
       const intensityMultiplier = INTENSITY_MULTIPLIERS[trainingConfig.intensity_preference || 'normal'] || 1.0
       const originalMileage = Math.round(trainingConfig.current_weekly_mileage * phaseMultiplier * intensityMultiplier)

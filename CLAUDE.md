@@ -55,6 +55,7 @@ This ensures future sessions always have accurate context. Small, incremental up
   - `strava/` — Strava OAuth + API
   - `interface.ts` — Common interface, `displayDistance()`, `distanceLabel()`
 - `/lib/training/` — Core training logic
+  - `constants.ts` — Shared constants: `RACE_DISTANCES`, `PHASE_MULTIPLIERS`, `INTENSITY_MULTIPLIERS`, `LONG_RUN_PCT`, `RACE_NAMES`
   - `planner.ts` — Orchestrator: `generateTrainingPlan()`, `generateDailyPlan()`, phase logic, mileage calc
   - `run-variation.ts` — Dynamic run count variation (`calculateRunCountVariation()`, cycles, guardrails)
   - `coaching.ts` — `generateCoachingNotes()`, `generateRecoveryRecommendations()`
@@ -66,7 +67,11 @@ This ensures future sessions always have accurate context. Small, incremental up
   - `mileage-utils.ts` — Long run cap logic (`capLongRun()`)
   - `analyzer.ts` — Health data analysis (RHR, sleep, stress, body battery)
   - `adaptations.ts` — Recovery-based plan adjustments
-  - `emailer.ts` — Weekly email generation
+  - `emailer.ts` — Weekly email generation (orchestrator, imports from `email/`)
+  - `email/health-snapshot.ts` — Health metric snapshot builder
+  - `email/week-context.ts` — Date helpers, prior week recap, plan explanation
+  - `email/html-sections.ts` — HTML generators for recap and explanation sections
+  - `first-week-emailer.ts` — First week onboarding email
   - `__tests__/planner.test.ts` — Unit tests (vitest)
 - `/lib/encryption.ts` — AES-256 encrypt/decrypt for OAuth tokens
 - `/components/` — React components (most are `'use client'`)

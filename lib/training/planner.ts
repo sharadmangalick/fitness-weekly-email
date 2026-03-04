@@ -18,41 +18,7 @@ import { generateRecoveryPlan } from './plans/recovery'
 import { generateTaperPlan } from './plans/taper'
 import { generateRaceWeekPlan } from './plans/race-week'
 import { generateFrequencyAwarePlan } from './plans/frequency-aware'
-
-// Race distance mapping
-const RACE_DISTANCES: Record<string, number> = {
-  '5k': 3.1,
-  '10k': 6.2,
-  'half_marathon': 13.1,
-  'marathon': 26.2,
-}
-
-// Phase multipliers for different training phases
-const PHASE_MULTIPLIERS: Record<string, number> = {
-  base: 0.85,
-  build: 1.0,
-  peak: 1.1,
-  taper: 0.6,
-  race_week: 0.3,
-  recovery: 0.75,
-}
-
-// Intensity multipliers for user preference
-const INTENSITY_MULTIPLIERS: Record<string, number> = {
-  conservative: 0.85,
-  normal: 1.0,
-  aggressive: 1.15,
-}
-
-// Long run percentage by phase
-const LONG_RUN_PCT: Record<string, number> = {
-  base: 0.28,
-  build: 0.30,
-  peak: 0.32,
-  taper: 0.25,
-  race_week: 0.15,
-  recovery: 0.25,
-}
+import { RACE_DISTANCES, PHASE_MULTIPLIERS, INTENSITY_MULTIPLIERS, LONG_RUN_PCT, RACE_NAMES } from './constants'
 
 export interface WeekProjection {
   weekNumber: number
@@ -293,13 +259,7 @@ export function generateTrainingPlan(
     coachingNotes.push(...adaptationNotes)
   }
 
-  const raceNames: Record<string, string> = {
-    '5k': '5K', '10k': '10K', 'half_marathon': 'Half Marathon',
-    'marathon': 'Marathon', 'ultra': 'Ultra', 'build_mileage': 'Mileage Building',
-    'get_faster': 'Speed Training', 'maintain_fitness': 'Fitness Maintenance', 'base_building': 'Base Building',
-    'return_from_injury': 'Injury Recovery',
-  }
-  const displayRaceName = config.race_name || raceNames[config.goal_type] || 'race'
+  const displayRaceName = config.race_name || RACE_NAMES[config.goal_type] || 'race'
 
   let focus = ''
   if (phase === 'recovery') {
@@ -319,7 +279,7 @@ export function generateTrainingPlan(
   } else if (config.goal_type === 'get_faster') {
     focus = 'Speed-focused training with tempo and quality workouts'
   } else {
-    focus = raceNames[config.goal_type] || 'General training'
+    focus = RACE_NAMES[config.goal_type] || 'General training'
   }
 
   return {

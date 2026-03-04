@@ -6,6 +6,7 @@
  */
 
 import type { AnalysisResults } from './analyzer'
+import { RACE_NAMES } from './constants'
 
 /**
  * Generate coaching notes
@@ -20,11 +21,7 @@ export function generateCoachingNotes(
 ): string[] {
   const notes: string[] = []
 
-  const raceNames: Record<string, string> = {
-    '5k': '5K', '10k': '10K', 'half_marathon': 'Half Marathon',
-    'marathon': 'Marathon', 'ultra': 'Ultra', 'custom': 'Race',
-  }
-  const raceName = userRaceName || raceNames[goalType] || 'race'
+  const raceName = userRaceName || RACE_NAMES[goalType] || 'race'
 
   if (phase === 'recovery') {
     notes.push('Recovery phase — easy runs only, no speed work. Focus on rebuilding safely with gradual progression.')

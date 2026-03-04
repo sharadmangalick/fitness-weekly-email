@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import { trackGoalConfigured } from '@/components/GoogleAnalytics'
 import { displayDistance, distanceLabel, type DistanceUnit } from '@/lib/platforms/interface'
+import { RACE_DISTANCES as BASE_RACE_DISTANCES } from '@/lib/training/constants'
 
 interface GoalWizardProps {
   initialConfig?: any
@@ -18,10 +19,7 @@ interface GoalWizardProps {
 }
 
 const RACE_DISTANCES: Record<string, number> = {
-  '5k': 3.1,
-  '10k': 6.2,
-  'half_marathon': 13.1,
-  'marathon': 26.2,
+  ...BASE_RACE_DISTANCES,
   'custom': 0,
 }
 
