@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { calculateRunCountVariation } from '../run-variation'
 import { getTrainingPhase, calculateRecoveryAdjustment, generateTrainingPlan } from '../planner'
+import { convertPace, computePaceZones } from '../pace-utils'
+import { capLongRun } from '../mileage-utils'
 import type { AnalysisResults } from '../analyzer'
 import type { TrainingConfig } from '../../database.types'
 
@@ -279,5 +281,76 @@ describe('generateTrainingPlan', () => {
       // Taper multiplier is 0.6, so mileage should be well below base (30)
       expect(plan.week_summary.total_miles).toBeLessThan(30)
     }
+  })
+})
+
+// ──────────────────────────────────────────────
+// convertPace / computePaceZones
+// ──────────────────────────────────────────────
+describe('convertPace', () => {
+  it('formats pace per mile correctly', () => {
+    expect(convertPace(9.0, 'mi')).toBe('9:00')
+    expect(convertPace(8.5, 'mi')).toBe('8:30')
+  })
+
+  it('converts to km pace', () => {
+    // 8:00/mi ≈ 4:58/km
+    const kmPace = convertPace(8.0, 'km')
+    expect(kmPace).toMatch(/^4:5\d$/)
+  })
+})
+
+describe('computePaceZones', () => {
+  it('returns easy, tempo, display paces and unitLabel', () => {
+    const zones = computePaceZones('8:00', 'mi')
+    expect(zones.easyPace).toContain('-') // range like "9:00-10:00"
+    expect(zones.tempoPace).toContain('-')
+    expect(zones.displayTargetPace).toBe('8:00')
+    expect(zones.unitLabel).toBe('/mile')
+  })
+
+  it('uses km unit label when km is selected', () => {
+    const zones = computePaceZones('8:00', 'km')
+    expect(zones.unitLabel).toBe('/km')
+  })
+})
+
+// ──────────────────────────────────────────────
+// capLongRun
+// ──────────────────────────────────────────────
+describe('capLongRun', () => {
+  it('caps 5K long run at 10 miles', () => {
+    expect(capLongRun(15, '5k', null)).toBe(10)
+  })
+
+  it('caps half marathon long run at 16 miles', () => {
+    expect(capLongRun(20, 'half_marathon', null)).toBe(16)
+  })
+
+  it('caps marathon long run at 22 miles', () => {
+    expect(capLongRun(25, 'marathon', null)).toBe(22)
+  })
+
+  it('enforces minimum floor of 4 miles', () => {
+    expect(capLongRun(2, '5k', null)).toBe(4)
+  })
+
+  it('allows custom floor', () => {
+    expect(capLongRun(2, '5k', null, 3)).toBe(3)
+  })
+
+  it('caps ultra at 65% of race distance (max 35)', () => {
+    // 50-mile ultra → cap = 33
+    expect(capLongRun(40, 'ultra', 50)).toBe(33)
+    // 100-mile ultra → cap = 35 (hard max)
+    expect(capLongRun(70, 'ultra', 100)).toBe(35)
+  })
+
+  it('uses default cap of 20 for unknown goal types', () => {
+    expect(capLongRun(25, 'build_mileage', null)).toBe(20)
+  })
+
+  it('passes through values under the cap', () => {
+    expect(capLongRun(8, 'half_marathon', null)).toBe(8)
   })
 })

@@ -8,10 +8,11 @@
 import type { AnalysisResults } from './analyzer'
 import type { TrainingConfig } from '../database.types'
 import type { DistanceUnit } from '../platforms/interface'
-import { paceLabel } from '../platforms/interface'
 import type { AdaptationResult } from './adaptations'
 import { applyStructureChanges, applyLongRunAdjustment } from './adaptations'
 import { calculateRunCountVariation } from './run-variation'
+import { computePaceZones, convertPace } from './pace-utils'
+import { capLongRun } from './mileage-utils'
 import { generateCoachingNotes, generateRecoveryRecommendations } from './coaching'
 import { generateRecoveryPlan } from './plans/recovery'
 import { generateTaperPlan } from './plans/taper'
@@ -166,22 +167,7 @@ function generateDailyPlan(
   userRaceName?: string | null,
   runsPerWeek?: number | null
 ): DayPlan[] {
-  // Parse target pace (per mile)
-  const [paceMins, paceSecs] = targetPace.split(':').map(Number)
-  const pacePerMileMinutes = paceMins + paceSecs / 60
-
-  // Calculate pace zones in the user's preferred unit
-  const unitLabel = paceLabel(unit)
-  const convertPace = (paceMinPerMile: number): string => {
-    const paceMinPerUnit = unit === 'km' ? paceMinPerMile / 1.60934 : paceMinPerMile
-    const m = Math.floor(paceMinPerUnit)
-    const s = Math.round((paceMinPerUnit - m) * 60)
-    return `${m}:${s.toString().padStart(2, '0')}`
-  }
-
-  const easyPace = `${convertPace(pacePerMileMinutes + 1)}-${convertPace(pacePerMileMinutes + 2)}`
-  const tempoPace = `${convertPace(pacePerMileMinutes)}-${convertPace(pacePerMileMinutes + 0.25)}`
-  const displayTargetPace = convertPace(pacePerMileMinutes)
+  const { easyPace, tempoPace, displayTargetPace, unitLabel } = computePaceZones(targetPace, unit)
 
   // Recovery phase: easy runs only, extra rest days, no speed work
   if (phase === 'recovery') {
@@ -253,20 +239,11 @@ export function generateTrainingPlan(
     weeklyMiles = Math.round(weeklyMiles * (1 + runVariation.delta * 0.1))
   }
 
-  let longRunMiles = Math.round(weeklyMiles * longRunPct)
-
-  // Cap long run based on goal type
-  const maxLongRun: Record<string, number> = {
-    '5k': 10, '10k': 12, 'half_marathon': 16, 'marathon': 22,
-  }
-  // Ultra scales with race distance: cap at ~65% of race distance
-  const ultraDist = config.goal_type === 'ultra' && config.custom_distance_miles
-    ? config.custom_distance_miles : 0
-  const longRunCap = config.goal_type === 'ultra' && ultraDist > 26.2
-    ? Math.min(Math.round(ultraDist * 0.65), 35)
-    : maxLongRun[config.goal_type] || 20
-  longRunMiles = Math.min(longRunMiles, longRunCap)
-  longRunMiles = Math.max(longRunMiles, 4)
+  let longRunMiles = capLongRun(
+    Math.round(weeklyMiles * longRunPct),
+    config.goal_type,
+    config.custom_distance_miles
+  )
 
   // Apply long run adjustment from adaptations
   if (adaptations?.longRunAdjustment) {
@@ -294,16 +271,7 @@ export function generateTrainingPlan(
 
   // Apply structure changes from adaptations
   if (adaptations && adaptations.structureChanges.length > 0) {
-    const [paceMins, paceSecs] = targetPace.split(':').map(Number)
-    const pacePerMileMinutes = paceMins + paceSecs / 60
-    const unitLabel = paceLabel(distanceUnit)
-    const convertPace = (paceMinPerMile: number): string => {
-      const paceMinPerUnit = distanceUnit === 'km' ? paceMinPerMile / 1.60934 : paceMinPerMile
-      const m = Math.floor(paceMinPerUnit)
-      const s = Math.round((paceMinPerUnit - m) * 60)
-      return `${m}:${s.toString().padStart(2, '0')}`
-    }
-    const easyPace = `${convertPace(pacePerMileMinutes + 1)}-${convertPace(pacePerMileMinutes + 2)}`
+    const { easyPace, unitLabel } = computePaceZones(targetPace, distanceUnit)
     dailyPlan = applyStructureChanges(dailyPlan, adaptations.structureChanges, easyPace, unitLabel)
   }
 
@@ -416,19 +384,11 @@ export function generatePlanProjection(config: TrainingConfig): WeekProjection[]
     const longRunPct = LONG_RUN_PCT[phase] || 0.28
 
     const projectedMileage = Math.round(baseMileage * phaseMultiplier * intensityMultiplier)
-    let longRunMiles = Math.round(projectedMileage * longRunPct)
-
-    // Cap long run based on goal type
-    const maxLongRun: Record<string, number> = {
-      '5k': 10, '10k': 12, 'half_marathon': 16, 'marathon': 22,
-    }
-    const ultraDist = config.goal_type === 'ultra' && config.custom_distance_miles
-      ? config.custom_distance_miles : 0
-    const longRunCap = config.goal_type === 'ultra' && ultraDist > 26.2
-      ? Math.min(Math.round(ultraDist * 0.65), 35)
-      : maxLongRun[config.goal_type] || 20
-    longRunMiles = Math.min(longRunMiles, longRunCap)
-    longRunMiles = Math.max(longRunMiles, 4)
+    let longRunMiles = capLongRun(
+      Math.round(projectedMileage * longRunPct),
+      config.goal_type,
+      config.custom_distance_miles
+    )
 
     // Race week doesn't have a traditional long run
     if (phase === 'race_week') {

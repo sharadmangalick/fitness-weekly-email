@@ -62,6 +62,8 @@ This ensures future sessions always have accurate context. Small, incremental up
   - `plans/taper.ts` — Taper phase plan generator
   - `plans/race-week.ts` — Race week plan generator
   - `plans/frequency-aware.ts` — Frequency-aware plan generator (`selectRunDays()`)
+  - `pace-utils.ts` — Shared pace conversion and zone calculation
+  - `mileage-utils.ts` — Long run cap logic (`capLongRun()`)
   - `analyzer.ts` — Health data analysis (RHR, sleep, stress, body battery)
   - `adaptations.ts` — Recovery-based plan adjustments
   - `emailer.ts` — Weekly email generation
