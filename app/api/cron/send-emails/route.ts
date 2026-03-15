@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
 import { decryptTokens, encryptTokens } from '@/lib/encryption'
 import { GarminAdapter } from '@/lib/platforms/garmin/adapter'
+import { getWebhookHealthData, mergeWithWebhookData } from '@/lib/platforms/garmin/webhook-data'
 import { StravaAdapter } from '@/lib/platforms/strava/adapter'
 import { analyzeTrainingData } from '@/lib/training/analyzer'
 import { generateTrainingPlan } from '@/lib/training/planner'
@@ -165,12 +166,17 @@ export async function POST(request: NextRequest) {
             }
           }
           platformData = await adapter.getAllData(tokens, 30)  // 30 days for rolling baseline
+
+          // Merge in webhook-delivered health data (sleep, body battery, heart rate)
+          // Garmin pushes richer health data via webhooks than what the pull API returns
+          const webhookData = await getWebhookHealthData(supabase, profile.id, 30)
+          platformData = mergeWithWebhookData(platformData, webhookData)
         } else {
           const tokens = decryptTokens<StravaTokens>(connection.tokens_encrypted, connection.iv)
           const adapter = new StravaAdapter()
           platformData = await adapter.getAllData(tokens, 30)  // 30 days for rolling baseline
         }
-        console.log(`Fetched platform data: ${platformData.activities.length} activities`)
+        console.log(`Fetched platform data: ${platformData.activities.length} activities, ${platformData.sleep.length} sleep days, ${platformData.dailySummaries.length} daily summaries`)
 
         // Calculate updated baseline from actual training history
         const baselineUpdate = calculateUpdatedBaseline(platformData.activities, config.current_weekly_mileage)
@@ -230,7 +236,8 @@ export async function POST(request: NextRequest) {
           phase,
           goalPaceMinPerMile,
           null,
-          config.preferred_long_run_day
+          config.preferred_long_run_day,
+          connection.platform as 'garmin' | 'strava'
         )
 
         // Generate training plan (with updated baseline and adaptations)

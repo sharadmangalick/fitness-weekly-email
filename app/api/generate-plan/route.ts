@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-server'
 import { decryptTokens, encryptTokens } from '@/lib/encryption'
 import { GarminAdapter } from '@/lib/platforms/garmin/adapter'
+import { getWebhookHealthData, mergeWithWebhookData } from '@/lib/platforms/garmin/webhook-data'
 import { StravaAdapter } from '@/lib/platforms/strava/adapter'
 import { analyzeTrainingData, AnalysisResults } from '@/lib/training/analyzer'
 import { generateTrainingPlan, TrainingPlan, calculateRecoveryAdjustment, getRecoveryConcerns } from '@/lib/training/planner'
@@ -143,6 +144,10 @@ export async function POST(request: NextRequest) {
         }
       }
       platformData = await adapter.getAllData(tokens, 28) // 28 days for better analysis
+
+      // Merge in webhook-delivered health data (sleep, body battery, heart rate)
+      const webhookData = await getWebhookHealthData(adminClient, user.id, 28)
+      platformData = mergeWithWebhookData(platformData, webhookData)
     } else {
       const tokens = decryptTokens<StravaTokens>(connection.tokens_encrypted, connection.iv)
       const adapter = new StravaAdapter()
@@ -180,7 +185,8 @@ export async function POST(request: NextRequest) {
       phase,
       goalPaceMinPerMile,
       null, // expectedLongRunMiles computed inside planner
-      trainingConfig.preferred_long_run_day
+      trainingConfig.preferred_long_run_day,
+      connection.platform as 'garmin' | 'strava'
     )
 
     const plan = generateTrainingPlan(trainingConfig, analysis, distanceUnit, adaptations)
