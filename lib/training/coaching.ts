@@ -31,15 +31,18 @@ export function generateCoachingNotes(
   }
 
   if (phase === 'peak') {
-    notes.push(`Peak week with ${weeksToRace} weeks to ${raceName}. Quality over quantity - nail your long run and tempo.`)
+    const weeksNote = weeksToRace !== null ? ` with ${weeksToRace} weeks to ${raceName}` : ''
+    notes.push(`Peak week${weeksNote}. Quality over quantity - nail your long run and tempo.`)
   } else if (phase === 'build') {
-    notes.push(`Building phase - ${weeksToRace} weeks until ${raceName}. Consistency with 4-5 runs per week builds a strong foundation.`)
+    const weeksNote = weeksToRace !== null ? `${weeksToRace} weeks until ${raceName}. ` : ''
+    notes.push(`Building phase - ${weeksNote}Consistency with 4-5 runs per week builds a strong foundation.`)
   } else if (phase === 'taper') {
     notes.push(`Taper time for ${raceName}. Reduced volume feels weird but it's working. Trust the process.`)
   } else if (phase === 'race_week') {
     notes.push(`${raceName} week! Minimal running, maximum rest. Stay calm, trust your training.`)
   } else if (phase === 'base') {
-    notes.push(`Base building phase - ${weeksToRace} weeks out from ${raceName}. Focus on easy miles and building your aerobic engine.`)
+    const weeksNote = weeksToRace !== null ? ` - ${weeksToRace} weeks out from ${raceName}` : ''
+    notes.push(`Base building phase${weeksNote}. Focus on easy miles and building your aerobic engine.`)
   }
 
   if (recoveryAdjustment < 1.0) {

@@ -119,7 +119,8 @@ export function computeAdaptations(
   phase: string,
   goalPaceMinPerMile: number | null,
   expectedLongRunMiles: number | null,
-  longRunDay: string = 'saturday'
+  longRunDay: string = 'saturday',
+  platform: 'garmin' | 'strava' | null = null
 ): AdaptationResult {
   const result: AdaptationResult = {
     mileageMultiplier: 1.0,
@@ -489,10 +490,15 @@ export function computeAdaptations(
       ['rule_2_body_battery_low', 'rule_5_extra_rest_declining', 'rule_7_rpe_fatigue_swap'].includes(r)
     )
     if (garminOnlyRules.length > 0) {
+      const message = platform === 'garmin'
+        ? `${result.rulesSkipped.length} adaptation rules skipped due to limited health data. Wear your Garmin device consistently for more personalized plans.`
+        : platform === 'strava'
+          ? `${result.rulesSkipped.length} adaptation rules skipped — Strava doesn't provide sleep or body battery data. Connect a Garmin device for full personalization.`
+          : `${result.rulesSkipped.length} adaptation rules skipped due to limited health data. Connect a Garmin device for full personalization.`
       result.insights.push({
         category: 'data_quality',
         severity: 'info',
-        message: `${result.rulesSkipped.length} adaptation rules skipped due to limited health data. Connect a Garmin device for full personalization.`,
+        message,
         source: 'data_quality_notice',
       })
     }
