@@ -131,6 +131,9 @@ export function calculateWeeklyMileage(activities: Activity[]): WeeklyMileageSum
  * @param currentBaseline - Current baseline mileage from training_config
  * @returns BaselineUpdate with new baseline and reasoning
  */
+/** Aerobic activity types that contribute to cardiovascular fitness */
+const AEROBIC_TYPES: Activity['type'][] = ['run', 'bike', 'swim', 'hike', 'walk']
+
 export function calculateUpdatedBaseline(
   activities: Activity[],
   currentBaseline: number
@@ -207,9 +210,23 @@ export function calculateUpdatedBaseline(
 
   const actualRecentAverage = weightedSum / weightTotal
 
+  // Check for cross-training volume — if significant, be more conservative
+  // about reducing the baseline since the user is still fit
+  const crossTrainingMinutes = activities
+    .filter(a => {
+      if (a.type === 'run' || !AEROBIC_TYPES.includes(a.type)) return false
+      const weekStart = getWeekStart(a.date)
+      return weekStart !== currentWeekStart
+    })
+    .reduce((sum, a) => sum + (a.duration_minutes || 0), 0)
+  const hasSignificantCrossTraining = crossTrainingMinutes >= 120 // 2+ hours/week
+
   // Apply safety constraints
   const maxIncrease = currentBaseline * 1.10  // 10% max increase
-  const maxDecrease = currentBaseline * 0.75  // 25% max decrease (allows for injury/rest weeks)
+  // Allow less reduction when cross-training maintains fitness
+  const maxDecrease = hasSignificantCrossTraining
+    ? currentBaseline * 0.85  // 15% max decrease with cross-training
+    : currentBaseline * 0.75  // 25% max decrease without
 
   let newBaseline = Math.round(actualRecentAverage)
   let reasoning = ''

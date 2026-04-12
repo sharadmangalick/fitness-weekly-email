@@ -66,7 +66,7 @@ export function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null, platfor
                   <td style="padding: 8px 0;">
                     <span style="font-size: 16px;">&#127939;</span>
                     <span style="color: #333; margin-left: 8px;">
-                      <strong>${recap.totalWorkouts} workouts</strong> &#183; ${displayDistance(recap.totalMiles, unit)} ${distanceLabel(unit)} total
+                      <strong>${recap.totalWorkouts} workouts</strong> (${workoutSummary}) &#183; ${displayDistance(recap.totalMiles, unit)} ${distanceLabel(unit)} total
                     </span>
                   </td>
                 </tr>

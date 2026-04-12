@@ -59,6 +59,49 @@ function clampMultiplier(value: number, floor = 0.70): number {
   return Math.max(floor, Math.min(1.0, value))
 }
 
+/** Aerobic activity types that contribute to cardiovascular fitness */
+const AEROBIC_TYPES: Activity['type'][] = ['run', 'bike', 'swim', 'hike', 'walk']
+
+/**
+ * Get longest aerobic session (any type) from last 7 days, in minutes.
+ * Used to detect cross-training that maintains fitness even without a long run.
+ */
+function getLongestRecentAerobicSession(activities: Activity[]): {
+  durationMinutes: number
+  type: Activity['type']
+} | null {
+  const oneWeekAgo = new Date()
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+
+  const recent = activities.filter(
+    a => AEROBIC_TYPES.includes(a.type) && new Date(a.date) >= oneWeekAgo
+  )
+
+  if (recent.length === 0) return null
+
+  const longest = recent.reduce((max, a) =>
+    a.duration_minutes > max.duration_minutes ? a : max
+  )
+
+  return { durationMinutes: longest.duration_minutes, type: longest.type }
+}
+
+/**
+ * Get total cross-training volume (non-run aerobic) from last 7 days, in minutes.
+ */
+function getRecentCrossTrainingMinutes(activities: Activity[]): number {
+  const oneWeekAgo = new Date()
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+
+  return activities
+    .filter(a =>
+      a.type !== 'run' &&
+      AEROBIC_TYPES.includes(a.type) &&
+      new Date(a.date) >= oneWeekAgo
+    )
+    .reduce((sum, a) => sum + (a.duration_minutes || 0), 0)
+}
+
 /**
  * Get the longest run distance from last 7 days of activities
  */
@@ -426,24 +469,46 @@ export function computeAdaptations(
     result.rulesSkipped.push('rule_11_eve_of_data')
   }
 
-  // Rule 12: Reduce after missed long run
+  // Rule 12: Reduce after missed long run (cross-training aware)
   result.rulesEvaluated++
   if (expectedLongRunMiles && !result.longRunAdjustment) {
     const longestRecent = getLongestRecentRun(platformData.activities)
     const threshold = expectedLongRunMiles * 0.6
     if (longestRecent === null || longestRecent < threshold) {
-      result.longRunAdjustment = {
-        type: 'reduce_percent',
-        value: 0.15,
-        reason: 'No long run detected last week',
+      // Check for long aerobic cross-training before penalizing
+      const longestAerobic = getLongestRecentAerobicSession(platformData.activities)
+      const hadLongCrossTraining = longestAerobic &&
+        longestAerobic.type !== 'run' &&
+        longestAerobic.durationMinutes >= 45
+
+      if (hadLongCrossTraining) {
+        // Long cross-training maintains aerobic fitness — smaller reduction
+        result.longRunAdjustment = {
+          type: 'reduce_percent',
+          value: 0.05,
+          reason: 'No long run last week, but cross-training maintained fitness',
+        }
+        result.rulesFired++
+        result.insights.push({
+          category: 'long_run',
+          severity: 'info',
+          message: `No long run last week, but your ${longestAerobic.type} sessions maintained aerobic fitness \u2014 minimal reduction applied.`,
+          source: 'rule_12_missed_long_run_cross_trained',
+        })
+      } else {
+        result.longRunAdjustment = {
+          type: 'reduce_percent',
+          value: 0.15,
+          reason: 'No long run detected last week',
+        }
+        result.rulesFired++
+        result.insights.push({
+          category: 'long_run',
+          severity: 'info',
+          message: "No long run detected last week \u2014 this week's reduced to rebuild safely.",
+          source: 'rule_12_missed_long_run',
+        })
       }
-      result.rulesFired++
-      result.insights.push({
-        category: 'long_run',
-        severity: 'info',
-        message: "No long run detected last week \u2014 this week's reduced to rebuild safely.",
-        source: 'rule_12_missed_long_run',
-      })
     }
   }
 
@@ -483,25 +548,49 @@ export function computeAdaptations(
     result.rulesSkipped.push('rule_14_vo2max_improving')
   }
 
-  // ═══ Data Quality Insight ═══
-
-  if (result.rulesSkipped.length > 0) {
-    const garminOnlyRules = result.rulesSkipped.filter(r =>
-      ['rule_2_body_battery_low', 'rule_5_extra_rest_declining', 'rule_7_rpe_fatigue_swap'].includes(r)
+  // Rule 15: Cross-training acknowledgment
+  result.rulesEvaluated++
+  const crossTrainingMinutes = getRecentCrossTrainingMinutes(platformData.activities)
+  if (crossTrainingMinutes >= 60) {
+    const crossHours = Math.round(crossTrainingMinutes / 60 * 10) / 10
+    // Count activity types
+    const oneWeekAgo = new Date()
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+    const crossTypes = new Set(
+      platformData.activities
+        .filter(a => a.type !== 'run' && AEROBIC_TYPES.includes(a.type) && new Date(a.date) >= oneWeekAgo)
+        .map(a => a.type)
     )
-    if (garminOnlyRules.length > 0) {
-      const message = platform === 'garmin'
-        ? `${result.rulesSkipped.length} adaptation rules skipped due to limited health data. Wear your Garmin device consistently for more personalized plans.`
-        : platform === 'strava'
-          ? `${result.rulesSkipped.length} adaptation rules skipped — Strava doesn't provide sleep or body battery data. Connect a Garmin device for full personalization.`
-          : `${result.rulesSkipped.length} adaptation rules skipped due to limited health data. Connect a Garmin device for full personalization.`
-      result.insights.push({
-        category: 'data_quality',
-        severity: 'info',
-        message,
-        source: 'data_quality_notice',
-      })
-    }
+    const typeList = Array.from(crossTypes).join(', ')
+    result.rulesFired++
+    result.insights.push({
+      category: 'positive',
+      severity: 'positive',
+      message: `${crossHours}h of cross-training last week (${typeList}) \u2014 factored into your plan adjustments.`,
+      source: 'rule_15_cross_training',
+    })
+  }
+
+  // ═══ Data Quality Insight ═══
+  // Only count rules skipped due to missing health/device data, not rules
+  // skipped for structural reasons (wrong phase, not enough runs, no goal pace).
+  const healthDataRules = [
+    'rule_1_rhr_elevated', 'rule_2_body_battery_low', 'rule_3_poor_sleep',
+    'rule_5_extra_rest_declining', 'rule_6_no_intervals_sleep_deprived',
+    'rule_7_rpe_fatigue_swap', 'rule_11_eve_of_data', 'rule_14_vo2max_improving',
+  ]
+  const healthSkipped = result.rulesSkipped.filter(r => healthDataRules.includes(r))
+
+  if (healthSkipped.length > 0) {
+    const message = platform === 'strava'
+      ? `${healthSkipped.length} adaptation ${healthSkipped.length === 1 ? 'rule' : 'rules'} skipped — Strava doesn't provide sleep or body battery data. Connect a Garmin device for full personalization.`
+      : `${healthSkipped.length} adaptation ${healthSkipped.length === 1 ? 'rule' : 'rules'} skipped due to limited health data. Connect a Garmin device for full personalization.`
+    result.insights.push({
+      category: 'data_quality',
+      severity: 'info',
+      message,
+      source: 'data_quality_notice',
+    })
   }
 
   return result
