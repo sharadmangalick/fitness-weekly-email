@@ -30,12 +30,32 @@ export function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null, platfor
     `
   }
 
-  // Build workout type summary
+  // Build a per-type breakdown with the volume unit that's most
+  // meaningful for that type (miles for run/walk/hike, minutes for
+  // bike/swim/strength/other).
+  const plural = (n: number, word: string) => `${n} ${word}${n !== 1 ? 's' : ''}`
   const workoutParts: string[] = []
-  if (recap.runCount > 0) workoutParts.push(`${recap.runCount} run${recap.runCount !== 1 ? 's' : ''}`)
-  if (recap.bikeCount > 0) workoutParts.push(`${recap.bikeCount} bike${recap.bikeCount !== 1 ? 's' : ''}`)
-  if (recap.walkCount > 0) workoutParts.push(`${recap.walkCount} walk${recap.walkCount !== 1 ? 's' : ''}`)
-  if (recap.otherCount > 0) workoutParts.push(`${recap.otherCount} other`)
+  if (recap.runCount > 0) {
+    workoutParts.push(`${plural(recap.runCount, 'run')} (${displayDistance(recap.runMiles, unit)} ${distanceLabelShort(unit)})`)
+  }
+  if (recap.bikeCount > 0) {
+    workoutParts.push(`${plural(recap.bikeCount, 'bike')} (${recap.bikeMinutes} min)`)
+  }
+  if (recap.strengthCount > 0) {
+    workoutParts.push(`${recap.strengthCount} strength (${recap.strengthMinutes} min)`)
+  }
+  if (recap.walkCount > 0) {
+    workoutParts.push(`${plural(recap.walkCount, 'walk')} (${displayDistance(recap.walkMiles, unit)} ${distanceLabelShort(unit)})`)
+  }
+  if (recap.hikeCount > 0) {
+    workoutParts.push(`${plural(recap.hikeCount, 'hike')} (${displayDistance(recap.hikeMiles, unit)} ${distanceLabelShort(unit)})`)
+  }
+  if (recap.swimCount > 0) {
+    workoutParts.push(`${plural(recap.swimCount, 'swim')} (${recap.swimMinutes} min)`)
+  }
+  if (recap.otherCount > 0) {
+    workoutParts.push(`${recap.otherCount} other (${recap.otherMinutes} min)`)
+  }
   const workoutSummary = workoutParts.join(' &#183; ')
 
   // Format active time
@@ -66,7 +86,7 @@ export function generatePriorWeekRecapHtml(recap: PriorWeekRecap | null, platfor
                   <td style="padding: 8px 0;">
                     <span style="font-size: 16px;">&#127939;</span>
                     <span style="color: #333; margin-left: 8px;">
-                      <strong>${recap.totalWorkouts} workouts</strong> (${workoutSummary}) &#183; ${displayDistance(recap.totalMiles, unit)} ${distanceLabel(unit)} total
+                      <strong>${recap.totalWorkouts} workout${recap.totalWorkouts !== 1 ? 's' : ''}</strong>: ${workoutSummary}
                     </span>
                   </td>
                 </tr>
