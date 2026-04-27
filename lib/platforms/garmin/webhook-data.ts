@@ -27,8 +27,9 @@ import type {
   HeartRateData,
   AllPlatformData,
   VO2MaxData,
+  Activity,
 } from '../interface'
-import { metersToMiles } from '../interface'
+import { metersToMiles, normalizeActivityType, formatPace, secondsToMinutes } from '../interface'
 import { log } from '@/lib/logging'
 
 interface HealthSnapshotSummary {
@@ -57,6 +58,44 @@ interface UserMetricsPayload {
   fitnessAge?: number
 }
 
+interface ActivityWebhookPayload {
+  activityId?: number | string
+  activityName?: string
+  activityType?: string
+  startTimeInSeconds?: number
+  durationInSeconds?: number
+  distanceInMeters?: number
+  activeKilocalories?: number
+  averageHeartRateInBeatsPerMinute?: number
+  maxHeartRateInBeatsPerMinute?: number
+  averageRunCadenceInStepsPerMinute?: number
+  totalElevationGainInMeters?: number
+  deviceName?: string
+}
+
+function normalizeWebhookActivity(p: ActivityWebhookPayload): Activity | null {
+  if (!p.activityId || !p.startTimeInSeconds) return null
+  const distanceMiles = metersToMiles(p.distanceInMeters || 0)
+  const durationMinutes = secondsToMinutes(p.durationInSeconds || 0)
+  return {
+    id: String(p.activityId),
+    date: new Date(p.startTimeInSeconds * 1000),
+    type: normalizeActivityType((p.activityType || 'other').toLowerCase()),
+    name: p.activityName || 'Activity',
+    distance_miles: Math.round(distanceMiles * 100) / 100,
+    duration_minutes: Math.round(durationMinutes * 10) / 10,
+    avg_pace_per_mile: formatPace(durationMinutes, distanceMiles),
+    avg_hr: p.averageHeartRateInBeatsPerMinute,
+    max_hr: p.maxHeartRateInBeatsPerMinute,
+    elevation_gain_ft: p.totalElevationGainInMeters
+      ? Math.round(p.totalElevationGainInMeters * 3.28084)
+      : undefined,
+    calories: p.activeKilocalories,
+    avg_cadence: p.averageRunCadenceInStepsPerMinute,
+    device_name: p.deviceName,
+  }
+}
+
 /**
  * Read Garmin health data from webhook deliveries stored in Supabase.
  * Returns normalized sleep, daily summary, heart rate, and VO2 max data.
@@ -70,6 +109,7 @@ export async function getWebhookHealthData(
   dailySummaries: DailySummary[]
   heartRate: HeartRateData[]
   vo2max: VO2MaxData[]
+  activities: Activity[]
 }> {
   const since = new Date()
   since.setDate(since.getDate() - days)
@@ -79,29 +119,33 @@ export async function getWebhookHealthData(
     .from('garmin_webhook_deliveries')
     .select('webhook_type, payload, created_at')
     .eq('user_id', userId)
-    .in('webhook_type', ['sleep', 'daily_summary', 'health_snapshot', 'user_metrics'])
+    .in('webhook_type', ['sleep', 'daily_summary', 'health_snapshot', 'user_metrics', 'activity'])
     .gte('created_at', since.toISOString())
     .order('created_at', { ascending: false })
 
   if (error) {
     log('error', 'Failed to read webhook deliveries', { error, userId })
-    return { sleep: [], dailySummaries: [], heartRate: [], vo2max: [] }
+    return { sleep: [], dailySummaries: [], heartRate: [], vo2max: [], activities: [] }
   }
 
   if (!webhooks || webhooks.length === 0) {
-    return { sleep: [], dailySummaries: [], heartRate: [], vo2max: [] }
+    return { sleep: [], dailySummaries: [], heartRate: [], vo2max: [], activities: [] }
   }
 
   const sleep: SleepData[] = []
   const dailySummaries: DailySummary[] = []
   const heartRate: HeartRateData[] = []
   const vo2max: VO2MaxData[] = []
+  const activities: Activity[] = []
 
   // Deduplicate by date (newest webhook first due to order above)
   const seenSleepDates = new Set<string>()
   const seenDailyDates = new Set<string>()
   const seenHRDates = new Set<string>()
   const seenVO2Dates = new Set<string>()
+  // Activities are deduped by activityId, not date — a user can do multiple
+  // runs on the same day.
+  const seenActivityIds = new Set<string>()
 
   for (const webhook of webhooks) {
     const p = webhook.payload
@@ -201,6 +245,14 @@ export async function getWebhookHealthData(
         vo2max.push({ date, vo2max: vo2 })
         break
       }
+      case 'activity': {
+        const aid = String(p.activityId ?? '')
+        if (!aid || seenActivityIds.has(aid)) break
+        seenActivityIds.add(aid)
+        const activity = normalizeWebhookActivity(p as ActivityWebhookPayload)
+        if (activity) activities.push(activity)
+        break
+      }
     }
   }
 
@@ -210,9 +262,10 @@ export async function getWebhookHealthData(
     dailySummaryDays: dailySummaries.length,
     heartRateDays: heartRate.length,
     vo2maxDays: vo2max.length,
+    activities: activities.length,
   })
 
-  return { sleep, dailySummaries, heartRate, vo2max }
+  return { sleep, dailySummaries, heartRate, vo2max, activities }
 }
 
 /**
@@ -262,8 +315,27 @@ function mergeDailySummaries(
 }
 
 /**
+ * Merge activities by activity id. A user can have multiple runs on
+ * the same day, so date-keyed dedup is wrong here.
+ */
+function mergeActivitiesById(pullItems: Activity[], webhookItems: Activity[]): Activity[] {
+  const byId = new Map<string, Activity>()
+  for (const item of pullItems) byId.set(item.id, item)
+  for (const item of webhookItems) {
+    const existing = byId.get(item.id)
+    byId.set(item.id, existing ? { ...existing, ...stripUndefined(item) } : item)
+  }
+  return Array.from(byId.values()).sort((a, b) => b.date.getTime() - a.date.getTime())
+}
+
+/**
  * Merge webhook health data into pull API data. Webhook data wins on
  * conflict but null/undefined fields don't clobber valid values.
+ *
+ * Activities are merged in too — Garmin's pull API can refuse to return
+ * activities uploaded outside the current consent window
+ * (`InvalidPullTokenException`), so the webhook delivery is often the
+ * only record we have of those runs.
  */
 export function mergeWithWebhookData(
   pullData: AllPlatformData,
@@ -272,10 +344,12 @@ export function mergeWithWebhookData(
     dailySummaries: DailySummary[]
     heartRate: HeartRateData[]
     vo2max?: VO2MaxData[]
+    activities?: Activity[]
   },
 ): AllPlatformData {
   return {
     ...pullData,
+    activities: mergeActivitiesById(pullData.activities, webhookData.activities ?? []),
     sleep: mergeByDate(pullData.sleep, webhookData.sleep),
     dailySummaries: mergeDailySummaries(pullData.dailySummaries, webhookData.dailySummaries),
     heartRate: mergeByDate(pullData.heartRate, webhookData.heartRate),
