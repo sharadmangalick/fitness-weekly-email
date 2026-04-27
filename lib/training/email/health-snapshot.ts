@@ -96,11 +96,18 @@ export function buildHealthSnapshot(analysis: AnalysisResults, platform?: 'garmi
   }
 
   if (analysis.sleep.available) {
-    const nights = analysis.sleep.under_6h_nights ?? 0
+    // The Sleep row in the weekly email reports on the prior week, not
+    // the full 30-day analysis window. Fall back to the 30-day stats if
+    // the user has no sleep data in the last 7 days.
+    const weeklyAvail = (analysis.sleep.weekly_total_nights ?? 0) > 0
+    const avg = (weeklyAvail ? analysis.sleep.weekly_avg_hours : analysis.sleep.avg_hours) ?? 0
+    const nights = (weeklyAvail
+      ? analysis.sleep.weekly_under_6h_nights
+      : analysis.sleep.under_6h_nights) ?? 0
     const detail = nights === 1 ? '1 night under 6h' : `${nights} nights under 6h`
     snapshot.push({
       metric: 'Sleep',
-      value: `${analysis.sleep.avg_hours || 'N/A'} hrs avg`,
+      value: `${avg || 'N/A'} hrs avg`,
       detail,
       status: analysis.sleep.status || 'normal',
       emoji: getStatusEmoji(analysis.sleep.status || 'normal'),
