@@ -36,6 +36,35 @@ function decryptTokens(tokensEncrypted, iv) {
   return JSON.parse(decrypted)
 }
 
+/**
+ * Garmin's OAuth 2.0 token endpoint doesn't return a user id at the top
+ * level — it's embedded in the access token JWT as the `garmin_guid`
+ * claim. Pull it out by base64-decoding the middle segment.
+ */
+function extractGarminGuid(accessToken) {
+  if (!accessToken || typeof accessToken !== 'string') return null
+  const parts = accessToken.split('.')
+  if (parts.length !== 3) return null
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'))
+    return payload.garmin_guid || payload.sub || null
+  } catch {
+    return null
+  }
+}
+
+function findGarminUserId(tokens) {
+  // Direct field (rarely populated, but check first for forward compat).
+  if (tokens?.user_id) return tokens.user_id
+  // Current shape: top-level access_token JWT.
+  const fromTop = extractGarminGuid(tokens?.access_token)
+  if (fromTop) return fromTop
+  // Legacy shape: oauth1+oauth2 nested.
+  const fromNested = extractGarminGuid(tokens?.oauth2_token?.access_token)
+  if (fromNested) return fromNested
+  return null
+}
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 })
@@ -74,10 +103,10 @@ async function main() {
       continue
     }
 
-    const garminUserId = tokens.user_id
+    const garminUserId = findGarminUserId(tokens)
     if (!garminUserId) {
       missingUserId++
-      console.warn(`✗ ${row.id} (${row.status}): tokens.user_id missing`)
+      console.warn(`✗ ${row.id} (${row.status}): no garmin user id in tokens or access-token JWT`)
       continue
     }
 

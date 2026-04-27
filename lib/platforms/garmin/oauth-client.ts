@@ -131,12 +131,33 @@ export async function exchangeCodeForTokens(
   // Garmin returns expires_in (seconds from now), convert to expires_at (Unix timestamp)
   const expiresAt = Math.floor(Date.now() / 1000) + (data.expires_in || 3600)
 
+  // Garmin's token response doesn't carry user_id at the top level; the
+  // Garmin user id ("garmin_guid") is embedded inside the access-token JWT.
+  const garminUserId = data.user_id ?? extractGarminGuidFromAccessToken(data.access_token)
+
   return {
     access_token: data.access_token,
     refresh_token: data.refresh_token,
     expires_at: expiresAt,
-    user_id: data.user_id,
+    user_id: garminUserId,
     token_type: data.token_type || 'Bearer',
+  }
+}
+
+/**
+ * Decode the Garmin OAuth 2.0 access-token JWT and return the
+ * `garmin_guid` claim, falling back to `sub` if present. Returns the
+ * empty string when the token isn't a JWT we can read.
+ */
+function extractGarminGuidFromAccessToken(accessToken: string | undefined): string {
+  if (!accessToken) return ''
+  const parts = accessToken.split('.')
+  if (parts.length !== 3) return ''
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'))
+    return payload.garmin_guid || payload.sub || ''
+  } catch {
+    return ''
   }
 }
 
@@ -195,12 +216,13 @@ export async function refreshAccessToken(
   })
 
   const expiresAt = Math.floor(Date.now() / 1000) + (data.expires_in || 3600)
+  const garminUserId = data.user_id ?? extractGarminGuidFromAccessToken(data.access_token)
 
   return {
     access_token: data.access_token,
     refresh_token: data.refresh_token,
     expires_at: expiresAt,
-    user_id: data.user_id,
+    user_id: garminUserId,
     token_type: data.token_type || 'Bearer',
   }
 }
