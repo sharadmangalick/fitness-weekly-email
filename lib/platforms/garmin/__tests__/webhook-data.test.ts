@@ -247,6 +247,62 @@ describe('mergeWithWebhookData — activities', () => {
   })
 })
 
+describe('getWebhookHealthData — RHR derived from daily_summary HR samples', () => {
+  it('derives resting HR as the average of the 30 lowest HR samples', async () => {
+    // Build a fake samples object: 100 values, lowest 30 average to 50.
+    const samples: Record<string, number> = {}
+    // Lowest 30: 50, 50, 50, ... → average 50
+    for (let i = 0; i < 30; i++) samples[String(i)] = 50
+    // Rest of the day: higher values
+    for (let i = 30; i < 100; i++) samples[String(i)] = 80 + i
+
+    const supabase = makeStubSupabase([
+      {
+        webhook_type: 'daily_summary',
+        created_at: '2026-04-27T17:00:00Z',
+        payload: {
+          calendarDate: '2026-04-27',
+          steps: 8000,
+          timeOffsetHeartRateSamples: samples,
+        },
+      },
+    ])
+
+    const out = await getWebhookHealthData(supabase, 'app-user-1', 30)
+    expect(out.heartRate).toHaveLength(1)
+    expect(out.heartRate[0].resting_hr).toBe(50)
+  })
+
+  it('does not produce a heartRate entry when there are fewer than 30 samples', async () => {
+    const samples: Record<string, number> = {}
+    for (let i = 0; i < 20; i++) samples[String(i)] = 60
+    const supabase = makeStubSupabase([
+      {
+        webhook_type: 'daily_summary',
+        created_at: '2026-04-27T17:00:00Z',
+        payload: { calendarDate: '2026-04-27', steps: 0, timeOffsetHeartRateSamples: samples },
+      },
+    ])
+    const out = await getWebhookHealthData(supabase, 'app-user-1', 30)
+    expect(out.heartRate).toHaveLength(0)
+  })
+
+  it('still extracts steps/stress when HR samples are missing', async () => {
+    const supabase = makeStubSupabase([
+      {
+        webhook_type: 'daily_summary',
+        created_at: '2026-04-27T17:00:00Z',
+        payload: { calendarDate: '2026-04-27', steps: 5000, averageStressLevel: 22 },
+      },
+    ])
+    const out = await getWebhookHealthData(supabase, 'app-user-1', 30)
+    expect(out.dailySummaries).toHaveLength(1)
+    expect(out.dailySummaries[0].steps).toBe(5000)
+    expect(out.dailySummaries[0].stress_level).toBe(22)
+    expect(out.heartRate).toHaveLength(0)
+  })
+})
+
 describe('getWebhookHealthData — stress payload carries body battery', () => {
   it('extracts body battery high/low from timeOffsetBodyBatteryValues', async () => {
     const supabase = makeStubSupabase([
