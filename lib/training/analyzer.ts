@@ -50,6 +50,10 @@ export interface SleepAnalysis extends MetricAnalysis {
   nights_7plus?: number
   nights_7plus_pct?: number
   total_nights?: number
+  // Last-7-days subset, used for the prior-week recap in the email
+  weekly_avg_hours?: number
+  weekly_under_6h_nights?: number
+  weekly_total_nights?: number
 }
 
 export interface SedentaryAnalysis extends MetricAnalysis {
@@ -318,9 +322,8 @@ export class TrainingAnalyzer {
   }
 
   private analyzeSleep(): SleepAnalysis {
-    const sleepHours = this.data.sleep
-      .filter(s => s.total_sleep_hours > 0)
-      .map(s => s.total_sleep_hours)
+    const validSleep = this.data.sleep.filter(s => s.total_sleep_hours > 0)
+    const sleepHours = validSleep.map(s => s.total_sleep_hours)
 
     if (sleepHours.length === 0) {
       return { available: false }
@@ -328,6 +331,14 @@ export class TrainingAnalyzer {
 
     const under6 = sleepHours.filter(h => h < 6).length
     const nights7plus = sleepHours.filter(h => h >= 7).length
+
+    // Last-7-days subset for the prior-week recap in the weekly email.
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const sevenDayCutoff = sevenDaysAgo.toISOString().slice(0, 10)
+    const weeklyHours = validSleep
+      .filter(s => s.date >= sevenDayCutoff)
+      .map(s => s.total_sleep_hours)
 
     return {
       available: true,
@@ -339,6 +350,9 @@ export class TrainingAnalyzer {
       nights_7plus: nights7plus,
       nights_7plus_pct: Math.round((nights7plus / sleepHours.length) * 100),
       total_nights: sleepHours.length,
+      weekly_avg_hours: weeklyHours.length > 0 ? Math.round(mean(weeklyHours) * 10) / 10 : undefined,
+      weekly_under_6h_nights: weeklyHours.filter(h => h < 6).length,
+      weekly_total_nights: weeklyHours.length,
       status: mean(sleepHours) < 6.5 ? 'concern' : mean(sleepHours) >= 7 ? 'good' : 'normal',
     }
   }
