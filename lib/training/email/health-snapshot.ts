@@ -96,10 +96,12 @@ export function buildHealthSnapshot(analysis: AnalysisResults, platform?: 'garmi
   }
 
   if (analysis.sleep.available) {
+    const nights = analysis.sleep.under_6h_nights ?? 0
+    const detail = nights === 1 ? '1 night under 6h' : `${nights} nights under 6h`
     snapshot.push({
       metric: 'Sleep',
       value: `${analysis.sleep.avg_hours || 'N/A'} hrs avg`,
-      detail: `${analysis.sleep.under_6h_pct || 0}% of nights under 6h`,
+      detail,
       status: analysis.sleep.status || 'normal',
       emoji: getStatusEmoji(analysis.sleep.status || 'normal'),
     })
