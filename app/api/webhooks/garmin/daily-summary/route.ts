@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { log } from '@/lib/logging'
+import { findConnectionByGarminUserId, buildDeliveryRow } from '@/lib/platforms/garmin/webhook-routing'
 import type { Database } from '@/lib/database.types'
 
 const createAdminClient = () => {
@@ -12,49 +13,42 @@ const createAdminClient = () => {
 
 /**
  * Garmin Daily Summary Webhook Handler
- * Stores daily health stats for background processing
+ *
+ * Routes by Garmin's userId. Payload carries steps/distance/stress; resting
+ * HR + body battery do NOT live here despite the name (those come from the
+ * healthSnapshot event).
  */
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.json()
     log('info', 'Garmin daily summary webhook received', payload)
 
-    const supabase = createAdminClient()
     const { userId: garminUserId } = payload
-
     if (!garminUserId) {
       return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
     }
 
-    // Find user connection
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: connections } = await (supabase as any)
-      .from('platform_connections')
-      .select('user_id')
-      .eq('platform', 'garmin')
-      .eq('status', 'active')
-      .limit(1)
-
-    const connection = connections?.[0]
+    const supabase = createAdminClient()
+    const connection = await findConnectionByGarminUserId(supabase, garminUserId)
     if (!connection) {
-      log('warn', 'No active Garmin connection found', { garminUserId })
-      return NextResponse.json({ success: true })
+      log('warn', 'Unmatched Garmin daily_summary webhook — persisting with user_id=NULL', { garminUserId })
     }
 
-    // Store webhook delivery
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
+    const { error } = await (supabase as any)
       .from('garmin_webhook_deliveries')
-      .insert({
-        user_id: connection.user_id,
-        webhook_type: 'daily_summary',
-        garmin_user_id: garminUserId,
+      .insert(buildDeliveryRow({
+        connection,
+        garminUserId,
+        webhookType: 'daily_summary',
         payload,
-        processed: false
-      })
+      }))
+
+    if (error) {
+      log('error', 'Failed to insert daily_summary delivery', { garminUserId, error: error.message })
+    }
 
     return NextResponse.json({ success: true })
-
   } catch (error) {
     log('error', 'Daily summary webhook error', { error })
     return NextResponse.json({ error: 'Processing failed' }, { status: 500 })

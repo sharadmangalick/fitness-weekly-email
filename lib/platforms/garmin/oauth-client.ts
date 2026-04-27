@@ -131,12 +131,49 @@ export async function exchangeCodeForTokens(
   // Garmin returns expires_in (seconds from now), convert to expires_at (Unix timestamp)
   const expiresAt = Math.floor(Date.now() / 1000) + (data.expires_in || 3600)
 
+  // Garmin's token response doesn't include the Wellness/Health API user
+  // id (which is what webhooks reference). The OAuth-side `garmin_guid`
+  // claim in the access-token JWT lives in a different namespace from the
+  // webhook userId. The canonical way to bridge them is calling
+  // /wellness-api/rest/user/id with the access token.
+  const garminUserId = data.user_id || await fetchGarminApiUserId(data.access_token, flowId)
+
   return {
     access_token: data.access_token,
     refresh_token: data.refresh_token,
     expires_at: expiresAt,
-    user_id: data.user_id,
+    user_id: garminUserId,
     token_type: data.token_type || 'Bearer',
+  }
+}
+
+/**
+ * Resolve the Garmin Wellness/Health API user id for a freshly issued
+ * access token. This id is what webhook deliveries carry as `userId`,
+ * so it's what we store on platform_connections.garmin_user_id and use
+ * for routing.
+ *
+ * Returns '' on failure — callers should treat that as an error so we
+ * don't persist a connection with no routing key.
+ */
+async function fetchGarminApiUserId(accessToken: string, flowId?: string): Promise<string> {
+  if (!accessToken) return ''
+  try {
+    const resp = await fetch(`${GARMIN_API_BASE_URL}/user/id`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    })
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '')
+      log('error', 'Garmin /user/id call failed', {
+        flowId, status: resp.status, body: body.slice(0, 200),
+      })
+      return ''
+    }
+    const data = await resp.json()
+    return data.userId || ''
+  } catch (err) {
+    log('error', 'Garmin /user/id call threw', { flowId, err })
+    return ''
   }
 }
 
@@ -195,12 +232,16 @@ export async function refreshAccessToken(
   })
 
   const expiresAt = Math.floor(Date.now() / 1000) + (data.expires_in || 3600)
+  // Refresh doesn't change the Wellness API user id — caller should
+  // preserve whatever's already stored on the connection. We avoid
+  // re-fetching /user/id here to keep the email cron's hot path fast.
+  const garminUserId = data.user_id || ''
 
   return {
     access_token: data.access_token,
     refresh_token: data.refresh_token,
     expires_at: expiresAt,
-    user_id: data.user_id,
+    user_id: garminUserId,
     token_type: data.token_type || 'Bearer',
   }
 }

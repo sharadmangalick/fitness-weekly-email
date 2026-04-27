@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { log } from '@/lib/logging'
+import { findConnectionByGarminUserId, buildDeliveryRow } from '@/lib/platforms/garmin/webhook-routing'
 import type { Database } from '@/lib/database.types'
 
 const createAdminClient = () => {
@@ -22,14 +23,10 @@ export async function GET() {
  * different top-level keys depending on what data is included.
  * A single request may contain multiple event types simultaneously.
  *
- * Supported event types:
- *   - activities         → running activity uploaded
- *   - dailies            → daily health summary
- *   - sleeps             → sleep data
- *   - stressDetails      → stress data
- *   - epochs             → heart rate epoch data
- *   - deregistrations    → user revoked access
- *   - userPermissionsChange → user changed data sharing permissions
+ * Routing: every event carries a Garmin-supplied `userId` we use to look
+ * up the matching active platform_connections row. Unmatched deliveries
+ * are still persisted (user_id=NULL) so we never drop data and can
+ * re-attribute later.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -39,54 +36,57 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient()
 
-    // Helper: find an active Garmin connection (best-effort match)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const findConnection = async () => {
+    const insertDelivery = async (
+      garminUserId: string | undefined,
+      webhookType: string,
+      eventPayload: unknown,
+      opts: { processed?: boolean; processedAt?: string } = {},
+    ) => {
+      const connection = await findConnectionByGarminUserId(supabase, garminUserId)
+      if (!connection) {
+        log('warn', 'Unmatched Garmin webhook — persisting with user_id=NULL', {
+          webhookType,
+          garminUserId,
+        })
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase as any)
-        .from('platform_connections')
-        .select('id, user_id')
-        .eq('platform', 'garmin')
-        .eq('status', 'active')
-        .limit(1)
-      return data?.[0] ?? null
+      const { error } = await (supabase as any)
+        .from('garmin_webhook_deliveries')
+        .insert(buildDeliveryRow({
+          connection,
+          garminUserId,
+          webhookType,
+          payload: eventPayload,
+          processed: opts.processed,
+          processedAt: opts.processedAt,
+        }))
+      if (error) {
+        log('error', 'Failed to insert webhook delivery', {
+          webhookType, garminUserId, error: error.message,
+        })
+      }
+      return connection
     }
 
     // ── Deregistrations ─────────────────────────────────────────────────────
     if (Array.isArray(payload.deregistrations)) {
       for (const { userId: garminUserId } of payload.deregistrations) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: connections } = await (supabase as any)
-            .from('platform_connections')
-            .select('id, user_id')
-            .eq('platform', 'garmin')
-            .eq('status', 'active')
-
-          const connection = connections?.[0]
+          const connection = await findConnectionByGarminUserId(supabase, garminUserId)
           if (connection) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await (supabase as any)
               .from('platform_connections')
               .update({ status: 'expired', updated_at: new Date().toISOString() })
               .eq('id', connection.id)
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any)
-              .from('garmin_webhook_deliveries')
-              .insert({
-                user_id: connection.user_id,
-                webhook_type: 'deregistration',
-                garmin_user_id: garminUserId,
-                payload: { userId: garminUserId },
-                processed: true,
-                processed_at: new Date().toISOString()
-              })
-
             log('info', 'Connection deregistered', { connectionId: connection.id, garminUserId })
           } else {
             log('warn', 'No active Garmin connection found for deregistration', { garminUserId })
           }
+          await insertDelivery(garminUserId, 'deregistration', { userId: garminUserId }, {
+            processed: true,
+            processedAt: new Date().toISOString(),
+          })
         } catch (err) {
           log('error', 'Error processing deregistration', { error: err, garminUserId })
         }
@@ -97,21 +97,11 @@ export async function POST(request: NextRequest) {
     if (Array.isArray(payload.userPermissionsChange)) {
       for (const item of payload.userPermissionsChange) {
         try {
-          const connection = await findConnection()
-          if (connection) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any)
-              .from('garmin_webhook_deliveries')
-              .insert({
-                user_id: connection.user_id,
-                webhook_type: 'user_permission',
-                garmin_user_id: item.userId,
-                payload: item,
-                processed: true,
-                processed_at: new Date().toISOString()
-              })
-            log('info', 'User permission change logged', { garminUserId: item.userId })
-          }
+          await insertDelivery(item.userId, 'user_permission', item, {
+            processed: true,
+            processedAt: new Date().toISOString(),
+          })
+          log('info', 'User permission change logged', { garminUserId: item.userId })
         } catch (err) {
           log('error', 'Error processing user permission change', { error: err })
         }
@@ -129,22 +119,8 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          const connection = await findConnection()
-          if (!connection) {
-            log('warn', 'No active Garmin connection found for activity', { garminUserId })
-            continue
-          }
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any)
-            .from('garmin_webhook_deliveries')
-            .insert({
-              user_id: connection.user_id,
-              webhook_type: 'activity',
-              garmin_user_id: garminUserId,
-              payload: activity,
-              processed: false
-            })
+          const connection = await insertDelivery(garminUserId, 'activity', activity)
+          if (!connection) continue
 
           // Trigger mileage recalculation async
           fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/calculate-mileage`, {
@@ -166,20 +142,8 @@ export async function POST(request: NextRequest) {
     if (Array.isArray(payload.dailies)) {
       for (const daily of payload.dailies) {
         try {
-          const connection = await findConnection()
-          if (connection) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any)
-              .from('garmin_webhook_deliveries')
-              .insert({
-                user_id: connection.user_id,
-                webhook_type: 'daily_summary',
-                garmin_user_id: daily.userId,
-                payload: daily,
-                processed: false
-              })
-            log('info', 'Daily summary stored', { garminUserId: daily.userId })
-          }
+          await insertDelivery(daily.userId, 'daily_summary', daily)
+          log('info', 'Daily summary stored', { garminUserId: daily.userId })
         } catch (err) {
           log('error', 'Error processing daily summary', { error: err })
         }
@@ -190,20 +154,8 @@ export async function POST(request: NextRequest) {
     if (Array.isArray(payload.sleeps)) {
       for (const sleep of payload.sleeps) {
         try {
-          const connection = await findConnection()
-          if (connection) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any)
-              .from('garmin_webhook_deliveries')
-              .insert({
-                user_id: connection.user_id,
-                webhook_type: 'sleep',
-                garmin_user_id: sleep.userId,
-                payload: sleep,
-                processed: false
-              })
-            log('info', 'Sleep data stored', { garminUserId: sleep.userId })
-          }
+          await insertDelivery(sleep.userId, 'sleep', sleep)
+          log('info', 'Sleep data stored', { garminUserId: sleep.userId })
         } catch (err) {
           log('error', 'Error processing sleep data', { error: err })
         }
@@ -214,67 +166,45 @@ export async function POST(request: NextRequest) {
     if (Array.isArray(payload.stressDetails)) {
       for (const stress of payload.stressDetails) {
         try {
-          const connection = await findConnection()
-          if (connection) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any)
-              .from('garmin_webhook_deliveries')
-              .insert({
-                user_id: connection.user_id,
-                webhook_type: 'stress',
-                garmin_user_id: stress.userId,
-                payload: stress,
-                processed: false
-              })
-            log('info', 'Stress data stored', { garminUserId: stress.userId })
-          }
+          await insertDelivery(stress.userId, 'stress', stress)
+          log('info', 'Stress data stored', { garminUserId: stress.userId })
         } catch (err) {
           log('error', 'Error processing stress data', { error: err })
         }
       }
     }
 
-    // ── Health Snapshots ─────────────────────────────────────────────────────
+    // ── Health Snapshots (carries resting HR + body battery aggregates) ─────
     if (Array.isArray(payload.healthSnapshot)) {
       for (const snapshot of payload.healthSnapshot) {
         try {
-          const connection = await findConnection()
-          if (connection) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any)
-              .from('garmin_webhook_deliveries')
-              .insert({
-                user_id: connection.user_id,
-                webhook_type: 'health_snapshot',
-                garmin_user_id: snapshot.userId,
-                payload: snapshot,
-                processed: false
-              })
-            log('info', 'Health snapshot stored', { garminUserId: snapshot.userId })
-          }
+          await insertDelivery(snapshot.userId, 'health_snapshot', snapshot)
+          log('info', 'Health snapshot stored', { garminUserId: snapshot.userId })
         } catch (err) {
           log('error', 'Error processing health snapshot', { error: err })
         }
       }
     }
 
-    // ── Heart Rate Epochs ────────────────────────────────────────────────────
+    // ── User Metrics (VO2 max, fitness age) ─────────────────────────────────
+    if (Array.isArray(payload.userMetrics)) {
+      for (const metric of payload.userMetrics) {
+        try {
+          await insertDelivery(metric.userId, 'user_metrics', metric)
+          log('info', 'User metrics stored', { garminUserId: metric.userId })
+        } catch (err) {
+          log('error', 'Error processing user metrics', { error: err })
+        }
+      }
+    }
+
+    // ── Heart Rate Epochs (15-min activity intensity, NOT resting HR) ───────
+    // Stored under webhook_type='heart_rate' for historical reasons; payload
+    // contains met/intensity/steps but no HR value.
     if (Array.isArray(payload.epochs)) {
       for (const epoch of payload.epochs) {
         try {
-          const connection = await findConnection()
-          if (connection) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any)
-              .from('garmin_webhook_deliveries')
-              .insert({
-                user_id: connection.user_id,
-                webhook_type: 'heart_rate',
-                garmin_user_id: epoch.userId,
-                payload: epoch,
-                processed: false
-              })
-          }
+          await insertDelivery(epoch.userId, 'heart_rate', epoch)
         } catch (err) {
           log('error', 'Error processing heart rate epoch', { error: err })
         }

@@ -51,7 +51,7 @@ This ensures future sessions always have accurate context. Small, incremental up
 
 ### Key Directories
 - `/lib/platforms/` — Platform adapters (factory pattern with `PlatformAdapter` interface)
-  - `garmin/` — Garmin Connect OAuth + Health/Activity API, `webhook-data.ts` reads pushed health data from `garmin_webhook_deliveries`
+  - `garmin/` — Garmin Connect OAuth + Health/Activity API, `webhook-data.ts` reads pushed health data from `garmin_webhook_deliveries`, `webhook-routing.ts` resolves an incoming webhook's Garmin user id to a `platform_connections` row (used by every handler under `/app/api/webhooks/garmin/`)
   - `strava/` — Strava OAuth + API
   - `interface.ts` — Common interface, `displayDistance()`, `distanceLabel()`
 - `/lib/training/` — Core training logic

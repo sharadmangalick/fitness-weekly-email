@@ -249,6 +249,7 @@ export async function GET(request: NextRequest) {
         iv,
         expires_at: expiresAt.toISOString(),
         status: 'active',
+        garmin_user_id: tokens.user_id,
       }, { onConflict: 'user_id,platform' })
 
     if (dbError) {
