@@ -138,6 +138,115 @@ describe('getWebhookHealthData — user_metrics', () => {
   })
 })
 
+describe('getWebhookHealthData — activity', () => {
+  it('normalizes a real-shape Garmin activity webhook into an Activity', async () => {
+    const supabase = makeStubSupabase([
+      {
+        webhook_type: 'activity',
+        created_at: '2026-04-27T13:52:09Z',
+        payload: {
+          userId: 'g-user-1',
+          activityId: 22677469781,
+          activityName: 'San Francisco Running',
+          activityType: 'RUNNING',
+          startTimeInSeconds: 1777295503,
+          durationInSeconds: 1735,
+          distanceInMeters: 5031.24,
+          activeKilocalories: 375,
+          averageHeartRateInBeatsPerMinute: 152,
+          maxHeartRateInBeatsPerMinute: 182,
+          averageRunCadenceInStepsPerMinute: 176.25,
+          totalElevationGainInMeters: 24,
+          deviceName: 'Garmin Forerunner 965',
+        },
+      },
+    ])
+
+    const out = await getWebhookHealthData(supabase, 'app-user-1', 30)
+    expect(out.activities).toHaveLength(1)
+    const a = out.activities[0]
+    expect(a.id).toBe('22677469781')
+    expect(a.type).toBe('run')
+    expect(a.name).toBe('San Francisco Running')
+    expect(a.distance_miles).toBeCloseTo(3.13, 1)
+    expect(a.duration_minutes).toBeCloseTo(28.9, 1)
+    expect(a.avg_hr).toBe(152)
+    expect(a.max_hr).toBe(182)
+    expect(a.elevation_gain_ft).toBe(79)
+    expect(a.device_name).toBe('Garmin Forerunner 965')
+  })
+
+  it('dedupes activities by id (not date) so multiple runs same-day survive', async () => {
+    const supabase = makeStubSupabase([
+      {
+        webhook_type: 'activity',
+        created_at: '2026-04-27T18:00:00Z',
+        payload: {
+          activityId: 222, activityType: 'RUNNING',
+          startTimeInSeconds: 1777300000, durationInSeconds: 1200, distanceInMeters: 4000,
+        },
+      },
+      {
+        webhook_type: 'activity',
+        created_at: '2026-04-27T08:00:00Z',
+        payload: {
+          activityId: 111, activityType: 'RUNNING',
+          startTimeInSeconds: 1777250000, durationInSeconds: 2000, distanceInMeters: 6000,
+        },
+      },
+    ])
+    const out = await getWebhookHealthData(supabase, 'app-user-1', 30)
+    expect(out.activities).toHaveLength(2)
+    expect(new Set(out.activities.map(a => a.id))).toEqual(new Set(['111', '222']))
+  })
+
+  it('skips payloads missing activityId or startTimeInSeconds', async () => {
+    const supabase = makeStubSupabase([
+      { webhook_type: 'activity', created_at: '2026-04-27T08:00:00Z',
+        payload: { activityType: 'RUNNING', durationInSeconds: 600 } },
+    ])
+    const out = await getWebhookHealthData(supabase, 'app-user-1', 30)
+    expect(out.activities).toHaveLength(0)
+  })
+})
+
+describe('mergeWithWebhookData — activities', () => {
+  it('uses webhook activities to fill the gap when pull API returns none (consent gap)', async () => {
+    const pull: AllPlatformData = {
+      activities: [], sleep: [], heartRate: [], dailySummaries: [],
+    }
+    const webhookData = {
+      sleep: [], heartRate: [], vo2max: [], dailySummaries: [],
+      activities: [{
+        id: '22677469781', date: new Date('2026-04-27T18:00:00Z'),
+        type: 'run' as const, name: 'San Francisco Running',
+        distance_miles: 3.13, duration_minutes: 28.9,
+        avg_pace_per_mile: '9:14',
+      }],
+    }
+    const merged = mergeWithWebhookData(pull, webhookData)
+    expect(merged.activities).toHaveLength(1)
+    expect(merged.activities[0].id).toBe('22677469781')
+  })
+
+  it('dedupes pull + webhook activities by id', async () => {
+    const sharedDate = new Date('2026-04-27T18:00:00Z')
+    const pull: AllPlatformData = {
+      activities: [{ id: '1', date: sharedDate, type: 'run', name: 'A', distance_miles: 3, duration_minutes: 25 }],
+      sleep: [], heartRate: [], dailySummaries: [],
+    }
+    const webhookData = {
+      sleep: [], heartRate: [], vo2max: [], dailySummaries: [],
+      activities: [
+        { id: '1', date: sharedDate, type: 'run' as const, name: 'A', distance_miles: 3, duration_minutes: 25 },
+        { id: '2', date: sharedDate, type: 'run' as const, name: 'B', distance_miles: 5, duration_minutes: 45 },
+      ],
+    }
+    const merged = mergeWithWebhookData(pull, webhookData)
+    expect(merged.activities.map(a => a.id).sort()).toEqual(['1', '2'])
+  })
+})
+
 describe('getWebhookHealthData — heart_rate (epoch) is not used for RHR', () => {
   it('does not produce a heartRate entry from a heart_rate (epoch) payload', async () => {
     // The Garmin "epochs" webhook is mislabeled in our pipeline as
