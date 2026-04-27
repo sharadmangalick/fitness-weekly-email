@@ -4,6 +4,11 @@ import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase-server'
 import AdminDashboard from '@/components/AdminDashboard'
 
+// Skip the static prerender — this page calls createAdminClient(), which
+// requires SUPABASE_SERVICE_ROLE_KEY at render time. That env var isn't
+// available during preview-deploy builds.
+export const dynamic = 'force-dynamic'
+
 const ADMIN_EMAIL = 'smangalick@gmail.com'
 
 interface ConnectionRecord {
