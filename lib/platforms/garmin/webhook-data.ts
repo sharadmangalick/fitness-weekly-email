@@ -58,6 +58,62 @@ interface UserMetricsPayload {
   fitnessAge?: number
 }
 
+interface StressWebhookPayload {
+  calendarDate?: string
+  // Per-second stress (0–100) keyed by offset-from-startTime in seconds
+  timeOffsetStressLevelValues?: Record<string, number>
+  // Per-second body battery (0–100) keyed by offset-from-startTime in seconds.
+  // This is the primary source of body battery data — Garmin doesn't ship a
+  // standalone body_battery webhook event; BB is only delivered as part of
+  // the stress payload.
+  timeOffsetBodyBatteryValues?: Record<string, number>
+  // Coarse impact events (e.g. SLEEP +81, ACTIVITY -8). Sum of positives ≈
+  // total charged for the day; absolute sum of negatives ≈ total drained.
+  bodyBatteryActivityEvents?: Array<{
+    eventType?: string
+    bodyBatteryImpact?: number
+  }>
+}
+
+function readBodyBatteryFromStress(p: StressWebhookPayload): {
+  date: string
+  high?: number
+  low?: number
+  charged?: number
+  drained?: number
+} | null {
+  const date = p.calendarDate
+  if (!date) return null
+  const bbValues = p.timeOffsetBodyBatteryValues
+  let high: number | undefined
+  let low: number | undefined
+  if (bbValues && typeof bbValues === 'object') {
+    const vals = Object.values(bbValues).filter((v): v is number => typeof v === 'number' && v > 0)
+    if (vals.length > 0) {
+      high = Math.max(...vals)
+      low = Math.min(...vals)
+    }
+  }
+  let charged: number | undefined
+  let drained: number | undefined
+  if (Array.isArray(p.bodyBatteryActivityEvents)) {
+    let chargedSum = 0
+    let drainedSum = 0
+    for (const event of p.bodyBatteryActivityEvents) {
+      const impact = event.bodyBatteryImpact
+      if (typeof impact !== 'number') continue
+      if (impact > 0) chargedSum += impact
+      else drainedSum += -impact
+    }
+    if (chargedSum > 0) charged = chargedSum
+    if (drainedSum > 0) drained = drainedSum
+  }
+  if (high === undefined && low === undefined && charged === undefined && drained === undefined) {
+    return null
+  }
+  return { date, high, low, charged, drained }
+}
+
 interface ActivityWebhookPayload {
   activityId?: number | string
   activityName?: string
@@ -119,7 +175,7 @@ export async function getWebhookHealthData(
     .from('garmin_webhook_deliveries')
     .select('webhook_type, payload, created_at')
     .eq('user_id', userId)
-    .in('webhook_type', ['sleep', 'daily_summary', 'health_snapshot', 'user_metrics', 'activity'])
+    .in('webhook_type', ['sleep', 'daily_summary', 'health_snapshot', 'user_metrics', 'activity', 'stress'])
     .gte('created_at', since.toISOString())
     .order('created_at', { ascending: false })
 
@@ -251,6 +307,21 @@ export async function getWebhookHealthData(
         seenActivityIds.add(aid)
         const activity = normalizeWebhookActivity(p as ActivityWebhookPayload)
         if (activity) activities.push(activity)
+        break
+      }
+      case 'stress': {
+        // Body battery is only delivered as part of the stress payload.
+        const bb = readBodyBatteryFromStress(p as StressWebhookPayload)
+        if (bb) {
+          dailySummaries.push({
+            date: bb.date,
+            steps: 0,
+            body_battery_high: bb.high,
+            body_battery_low: bb.low,
+            body_battery_charged: bb.charged,
+            body_battery_drained: bb.drained,
+          })
+        }
         break
       }
     }
