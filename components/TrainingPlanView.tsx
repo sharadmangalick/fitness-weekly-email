@@ -236,14 +236,22 @@ export default function TrainingPlanView({
                     />
                   )
                 })()}
-                {analysis.stress.available && (
-                  <HealthMetricCard
-                    label="Stress"
-                    value={`${analysis.stress.avg}`}
-                    detail={`${analysis.stress.high_stress_pct}% high stress days`}
-                    status={analysis.stress.status}
-                  />
-                )}
+                {analysis.stress.available && (() => {
+                  const hasWeekly = (analysis.stress.weekly_total_days ?? 0) > 0
+                  const avg = (hasWeekly ? analysis.stress.weekly_avg : analysis.stress.avg) ?? 0
+                  const elevated = (hasWeekly
+                    ? analysis.stress.weekly_high_stress_days
+                    : analysis.stress.high_stress_days) ?? 0
+                  const label = avg <= 25 ? 'Rest' : avg <= 50 ? 'Low' : avg <= 75 ? 'Medium' : 'High'
+                  return (
+                    <HealthMetricCard
+                      label="Stress"
+                      value={`${label} (${avg})`}
+                      detail={elevated === 1 ? '1 elevated stress day' : `${elevated} elevated stress days`}
+                      status={analysis.stress.status}
+                    />
+                  )
+                })()}
               </div>
             </div>
           )

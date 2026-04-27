@@ -68,6 +68,10 @@ export interface SedentaryAnalysis extends MetricAnalysis {
 export interface StressAnalysis extends MetricAnalysis {
   high_stress_days?: number
   high_stress_pct?: number
+  // Last-7-days subset for the prior-week recap in the email.
+  weekly_avg?: number
+  weekly_high_stress_days?: number
+  weekly_total_days?: number
 }
 
 export interface StepsAnalysis extends MetricAnalysis {
@@ -379,15 +383,22 @@ export class TrainingAnalyzer {
   }
 
   private analyzeStress(): StressAnalysis {
-    const stressValues = this.data.dailySummaries
-      .filter(d => d.stress_level && d.stress_level > 0)
-      .map(d => d.stress_level!)
+    const validDays = this.data.dailySummaries.filter(d => d.stress_level && d.stress_level > 0)
+    const stressValues = validDays.map(d => d.stress_level!)
 
     if (stressValues.length === 0) {
       return { available: false }
     }
 
     const highStressDays = stressValues.filter(s => s > 45).length
+
+    // Last-7-days subset for the prior-week recap in the email.
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const cutoff = sevenDaysAgo.toISOString().slice(0, 10)
+    const weeklyValues = validDays
+      .filter(d => d.date >= cutoff)
+      .map(d => d.stress_level!)
 
     return {
       available: true,
@@ -396,6 +407,9 @@ export class TrainingAnalyzer {
       max: Math.max(...stressValues),
       high_stress_days: highStressDays,
       high_stress_pct: Math.round((highStressDays / stressValues.length) * 100),
+      weekly_avg: weeklyValues.length > 0 ? Math.round(mean(weeklyValues)) : undefined,
+      weekly_high_stress_days: weeklyValues.filter(s => s > 45).length,
+      weekly_total_days: weeklyValues.length,
       status: mean(stressValues) > 45 ? 'concern' : mean(stressValues) < 35 ? 'good' : 'normal',
     }
   }
