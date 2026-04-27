@@ -225,7 +225,7 @@ export default function TrainingPlanView({
                   <HealthMetricCard
                     label="Sleep"
                     value={`${analysis.sleep.avg_hours} hrs`}
-                    detail={`${analysis.sleep.under_6h_pct}% of nights under 6h`}
+                    detail={analysis.sleep.under_6h_nights === 1 ? '1 night under 6h' : `${analysis.sleep.under_6h_nights ?? 0} nights under 6h`}
                     status={analysis.sleep.status}
                   />
                 )}
