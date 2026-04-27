@@ -18,7 +18,10 @@ export function getWeekDates(): { start: string; end: string } {
   const today = new Date()
   const dayOfWeek = today.getDay()
   const monday = new Date(today)
-  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+  // Sunday: point to tomorrow's Monday (the upcoming week the email plans for).
+  // Mon–Sat: point to this week's Monday.
+  const daysFromMonday = dayOfWeek === 0 ? -1 : dayOfWeek - 1
+  monday.setDate(today.getDate() - daysFromMonday)
 
   const sunday = new Date(monday)
   sunday.setDate(monday.getDate() + 6)

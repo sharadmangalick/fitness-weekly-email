@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { log } from '@/lib/logging'
+import { findConnectionByGarminUserId, buildDeliveryRow } from '@/lib/platforms/garmin/webhook-routing'
 import type { Database } from '@/lib/database.types'
 
-// Admin client for webhook operations
 const createAdminClient = () => {
   return createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +15,8 @@ const createAdminClient = () => {
  * Garmin Deregistration Webhook Handler
  *
  * Called when a user disconnects their Garmin account or revokes access.
- * We update the platform_connections status to 'deregistered'.
+ * Routes by Garmin's userId; only the matching connection's status is
+ * updated. Unmatched deliveries are still persisted for traceability.
  */
 export async function GET() {
   return NextResponse.json({ status: 'ok' })
@@ -40,30 +41,9 @@ export async function POST(request: NextRequest) {
       try {
         log('info', 'Processing deregistration', { garminUserId })
 
-        // Find platform_connection by garmin_user_id
-        // Garmin user ID is stored in the encrypted tokens, so we need to search
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: connections } = await (supabase as any)
-          .from('platform_connections')
-          .select('id, user_id, tokens_encrypted')
-          .eq('platform', 'garmin')
-          .eq('status', 'active')
+        const connection = await findConnectionByGarminUserId(supabase, garminUserId)
 
-        // Search for matching Garmin user ID in decrypted tokens
-        // This is inefficient but necessary since tokens are encrypted
-        // Alternative: store garmin_user_id as separate column
-        let matchingConnection = null
-        if (connections) {
-          for (const conn of connections) {
-            // In production, you'd decrypt and check
-            // For now, we update all active Garmin connections for safety
-            matchingConnection = conn
-            break
-          }
-        }
-
-        if (matchingConnection) {
-          // Update status to 'deregistered'
+        if (connection) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { error: updateError } = await (supabase as any)
             .from('platform_connections')
@@ -71,36 +51,34 @@ export async function POST(request: NextRequest) {
               status: 'deregistered',
               updated_at: new Date().toISOString()
             })
-            .eq('id', matchingConnection.id)
+            .eq('id', connection.id)
 
           if (updateError) {
             log('error', 'Failed to update connection status', { error: updateError, garminUserId })
           } else {
             log('info', 'Connection deregistered', {
-              connectionId: matchingConnection.id,
-              userId: matchingConnection.user_id,
+              connectionId: connection.id,
+              userId: connection.user_id,
               garminUserId
             })
           }
-
-          // Log webhook delivery
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any)
-            .from('garmin_webhook_deliveries')
-            .insert({
-              user_id: matchingConnection.user_id,
-              webhook_type: 'deregistration',
-              garmin_user_id: garminUserId,
-              payload: { userId: garminUserId },
-              processed: true,
-              processed_at: new Date().toISOString()
-            })
-
-          results.push({ garminUserId, status: 'success' })
         } else {
-          log('warn', 'No matching connection found', { garminUserId })
-          results.push({ garminUserId, status: 'not_found' })
+          log('warn', 'No matching connection found for deregistration', { garminUserId })
         }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+          .from('garmin_webhook_deliveries')
+          .insert(buildDeliveryRow({
+            connection,
+            garminUserId,
+            webhookType: 'deregistration',
+            payload: { userId: garminUserId },
+            processed: true,
+            processedAt: new Date().toISOString(),
+          }))
+
+        results.push({ garminUserId, status: connection ? 'success' : 'not_found' })
 
       } catch (error) {
         log('error', 'Error processing deregistration', { error, garminUserId })

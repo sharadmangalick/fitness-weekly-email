@@ -54,7 +54,8 @@ export interface Database {
           tokens_encrypted: string
           iv: string
           expires_at: string | null
-          status: 'active' | 'expired' | 'error'
+          status: 'active' | 'expired' | 'error' | 'deregistered'
+          garmin_user_id: string | null
           created_at: string
           updated_at: string
         }
@@ -65,7 +66,8 @@ export interface Database {
           tokens_encrypted: string
           iv: string
           expires_at?: string | null
-          status?: 'active' | 'expired' | 'error'
+          status?: 'active' | 'expired' | 'error' | 'deregistered'
+          garmin_user_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -76,7 +78,8 @@ export interface Database {
           tokens_encrypted?: string
           iv?: string
           expires_at?: string | null
-          status?: 'active' | 'expired' | 'error'
+          status?: 'active' | 'expired' | 'error' | 'deregistered'
+          garmin_user_id?: string | null
           updated_at?: string
         }
       }

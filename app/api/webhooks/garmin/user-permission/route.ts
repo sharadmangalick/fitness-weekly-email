@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { log } from '@/lib/logging'
+import { findConnectionByGarminUserId, buildDeliveryRow } from '@/lib/platforms/garmin/webhook-routing'
 import type { Database } from '@/lib/database.types'
 
 const createAdminClient = () => {
@@ -12,7 +13,7 @@ const createAdminClient = () => {
 
 /**
  * Garmin User Permission Webhook Handler
- * Called when user changes data sharing permissions
+ * Called when user changes data sharing permissions. Routes by Garmin's userId.
  */
 export async function GET() {
   return NextResponse.json({ status: 'ok' })
@@ -23,46 +24,32 @@ export async function POST(request: NextRequest) {
     const payload = await request.json()
     log('info', 'Garmin user permission webhook received', payload)
 
-    const supabase = createAdminClient()
-    const { userId: garminUserId, permissions } = payload
-
+    const { userId: garminUserId } = payload
     if (!garminUserId) {
       return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
     }
 
-    // Find user connection
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: connections } = await (supabase as any)
-      .from('platform_connections')
-      .select('user_id')
-      .eq('platform', 'garmin')
-      .eq('status', 'active')
-      .limit(1)
-
-    const connection = connections?.[0]
+    const supabase = createAdminClient()
+    const connection = await findConnectionByGarminUserId(supabase, garminUserId)
     if (!connection) {
-      log('warn', 'No active Garmin connection found', { garminUserId })
-      return NextResponse.json({ success: true })
+      log('warn', 'Unmatched Garmin user_permission webhook — persisting with user_id=NULL', { garminUserId })
     }
 
-    // Store webhook delivery
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
+    const { error } = await (supabase as any)
       .from('garmin_webhook_deliveries')
-      .insert({
-        user_id: connection.user_id,
-        webhook_type: 'user_permission',
-        garmin_user_id: garminUserId,
+      .insert(buildDeliveryRow({
+        connection,
+        garminUserId,
+        webhookType: 'user_permission',
         payload,
-        processed: true,  // Process immediately - just log it
-        processed_at: new Date().toISOString()
-      })
+        processed: true,
+        processedAt: new Date().toISOString(),
+      }))
 
-    log('info', 'User permission change logged', {
-      userId: connection.user_id,
-      garminUserId,
-      permissions
-    })
+    if (error) {
+      log('error', 'Failed to insert user_permission delivery', { garminUserId, error: error.message })
+    }
 
     return NextResponse.json({ success: true })
 

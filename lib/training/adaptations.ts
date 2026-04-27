@@ -582,9 +582,19 @@ export function computeAdaptations(
   const healthSkipped = result.rulesSkipped.filter(r => healthDataRules.includes(r))
 
   if (healthSkipped.length > 0) {
-    const message = platform === 'strava'
-      ? `${healthSkipped.length} adaptation ${healthSkipped.length === 1 ? 'rule' : 'rules'} skipped — Strava doesn't provide sleep or body battery data. Connect a Garmin device for full personalization.`
-      : `${healthSkipped.length} adaptation ${healthSkipped.length === 1 ? 'rule' : 'rules'} skipped due to limited health data. Connect a Garmin device for full personalization.`
+    const ruleWord = healthSkipped.length === 1 ? 'rule' : 'rules'
+    let message: string
+    if (platform === 'strava') {
+      message = `${healthSkipped.length} adaptation ${ruleWord} skipped — Strava doesn't provide sleep or body battery data. Connect a Garmin device for full personalization.`
+    } else {
+      const missing: string[] = []
+      if (!analysis.resting_hr.available) missing.push('resting HR')
+      if (!analysis.body_battery.available) missing.push('body battery')
+      if (!analysis.sleep.available) missing.push('sleep')
+      if (!analysis.vo2max.available) missing.push('VO2 max')
+      const missingClause = missing.length > 0 ? ` (${missing.join(', ')})` : ''
+      message = `${healthSkipped.length} adaptation ${ruleWord} skipped due to incomplete health data${missingClause}. Wear your Garmin watch consistently — including overnight — and let it sync for full personalization.`
+    }
     result.insights.push({
       category: 'data_quality',
       severity: 'info',

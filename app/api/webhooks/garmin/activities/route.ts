@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { log } from '@/lib/logging'
+import { findConnectionByGarminUserId, buildDeliveryRow } from '@/lib/platforms/garmin/webhook-routing'
 import type { Database } from '@/lib/database.types'
 
 // Admin client for webhook operations
@@ -14,8 +15,9 @@ const createAdminClient = () => {
 /**
  * Garmin Activities Webhook Handler
  *
- * Called when a user uploads a new activity to Garmin Connect.
- * We store the webhook and trigger mileage recalculation.
+ * Called when a user uploads a new activity to Garmin Connect. Routes by
+ * Garmin's userId — unmatched deliveries are still persisted with
+ * user_id=NULL for later re-attribution.
  */
 export async function GET() {
   return NextResponse.json({ status: 'ok' })
@@ -42,7 +44,6 @@ export async function POST(request: NextRequest) {
       const { userId: garminUserId, activityId, activityType } = activity
 
       try {
-        // Only process running activities
         const isRunning = activityType?.toLowerCase().includes('run')
         if (!isRunning) {
           log('info', 'Skipping non-running activity', { activityId, activityType })
@@ -51,38 +52,30 @@ export async function POST(request: NextRequest) {
 
         log('info', 'Processing running activity', { garminUserId, activityId, activityType })
 
-        // Find user connection by garmin_user_id
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: connections } = await (supabase as any)
-          .from('platform_connections')
-          .select('id, user_id')
-          .eq('platform', 'garmin')
-          .eq('status', 'active')
-
-        // In production, decrypt tokens and match garmin_user_id
-        // For now, we assume first active connection
-        const connection = connections?.[0]
-
+        const connection = await findConnectionByGarminUserId(supabase, garminUserId)
         if (!connection) {
-          log('warn', 'No active Garmin connection found', { garminUserId })
-          continue
+          log('warn', 'Unmatched Garmin activity webhook — persisting with user_id=NULL', { garminUserId, activityId })
         }
 
-        // Store webhook delivery (unprocessed - will be processed by cron job)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error: insertError } = await (supabase as any)
           .from('garmin_webhook_deliveries')
-          .insert({
-            user_id: connection.user_id,
-            webhook_type: 'activity',
-            garmin_user_id: garminUserId,
+          .insert(buildDeliveryRow({
+            connection,
+            garminUserId,
+            webhookType: 'activity',
             payload: activity,
-            processed: false  // Will be processed by background job
-          })
+          }))
 
         if (insertError) {
           log('error', 'Failed to store webhook delivery', { error: insertError, activityId })
           results.push({ activityId, status: 'error', error: insertError.message })
+          continue
+        }
+
+        if (!connection) {
+          // No mileage recalc until we know which user this activity belongs to.
+          results.push({ activityId, status: 'unmatched' })
           continue
         }
 
