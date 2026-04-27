@@ -48,14 +48,29 @@ export function calculateWeeksUntilRace(goalDate: string | null): number | null 
 }
 
 export interface PriorWeekRecap {
-  totalMiles: number
   totalWorkouts: number
+  // Counts by type. `otherCount` covers anything we don't recognize
+  // (yoga, pilates, HIIT, indoor cardio, etc.).
   runCount: number
   bikeCount: number
   walkCount: number
+  hikeCount: number
+  swimCount: number
+  strengthCount: number
   otherCount: number
+  // Volume-per-type. Miles are only meaningful for run/walk/hike;
+  // minutes are the right unit for bike/swim/strength/other where
+  // distance is missing or apples-to-oranges.
+  runMiles: number
+  walkMiles: number
+  hikeMiles: number
+  bikeMinutes: number
+  swimMinutes: number
+  strengthMinutes: number
+  otherMinutes: number
   longestRun: { distance: number; day: string } | null
   totalActiveMinutes: number
+  /** Average pace across runs only (formatted as M:SS). */
   avgPace: string | null
 }
 
@@ -79,18 +94,24 @@ export function buildPriorWeekRecap(platformData: AllPlatformData | null): Prior
     return null
   }
 
+  const sumMiles = (acts: Activity[]) =>
+    acts.reduce((sum, a) => sum + (a.distance_miles || 0), 0)
+  const sumMinutes = (acts: Activity[]) =>
+    Math.round(acts.reduce((sum, a) => sum + (a.duration_minutes || 0), 0))
+  const round1 = (n: number) => Math.round(n * 10) / 10
+
   const runs = lastWeekActivities.filter(a => a.type === 'run')
   const bikes = lastWeekActivities.filter(a => a.type === 'bike')
   const walks = lastWeekActivities.filter(a => a.type === 'walk')
-  const others = lastWeekActivities.filter(a => !['run', 'bike', 'walk'].includes(a.type))
+  const hikes = lastWeekActivities.filter(a => a.type === 'hike')
+  const swims = lastWeekActivities.filter(a => a.type === 'swim')
+  const strengths = lastWeekActivities.filter(a => a.type === 'strength')
+  const others = lastWeekActivities.filter(a =>
+    !['run', 'bike', 'walk', 'hike', 'swim', 'strength'].includes(a.type)
+  )
 
-  // Calculate total miles (all activities)
-  const totalMiles = lastWeekActivities.reduce((sum, a) => sum + (a.distance_miles || 0), 0)
+  const totalActiveMinutes = sumMinutes(lastWeekActivities)
 
-  // Calculate total active minutes
-  const totalActiveMinutes = lastWeekActivities.reduce((sum, a) => sum + (a.duration_minutes || 0), 0)
-
-  // Find longest run
   let longestRun: { distance: number; day: string } | null = null
   if (runs.length > 0) {
     const longest = runs.reduce((max, r) => r.distance_miles > max.distance_miles ? r : max)
@@ -98,10 +119,9 @@ export function buildPriorWeekRecap(platformData: AllPlatformData | null): Prior
     longestRun = { distance: longest.distance_miles, day: dayName }
   }
 
-  // Calculate average pace for runs
   let avgPace: string | null = null
   if (runs.length > 0) {
-    const totalRunMiles = runs.reduce((sum, r) => sum + (r.distance_miles || 0), 0)
+    const totalRunMiles = sumMiles(runs)
     const totalRunMinutes = runs.reduce((sum, r) => sum + (r.duration_minutes || 0), 0)
     if (totalRunMiles > 0) {
       const pacePerMile = totalRunMinutes / totalRunMiles
@@ -112,14 +132,23 @@ export function buildPriorWeekRecap(platformData: AllPlatformData | null): Prior
   }
 
   return {
-    totalMiles: Math.round(totalMiles * 10) / 10,
     totalWorkouts: lastWeekActivities.length,
     runCount: runs.length,
     bikeCount: bikes.length,
     walkCount: walks.length,
+    hikeCount: hikes.length,
+    swimCount: swims.length,
+    strengthCount: strengths.length,
     otherCount: others.length,
+    runMiles: round1(sumMiles(runs)),
+    walkMiles: round1(sumMiles(walks)),
+    hikeMiles: round1(sumMiles(hikes)),
+    bikeMinutes: sumMinutes(bikes),
+    swimMinutes: sumMinutes(swims),
+    strengthMinutes: sumMinutes(strengths),
+    otherMinutes: sumMinutes(others),
     longestRun,
-    totalActiveMinutes: Math.round(totalActiveMinutes),
+    totalActiveMinutes,
     avgPace,
   }
 }

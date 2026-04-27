@@ -27,7 +27,7 @@ export interface StravaTokens {
 export type PlatformTokens = GarminOAuthTokens | StravaTokens
 
 // Normalized data types (platform-agnostic)
-export type ActivityType = 'run' | 'bike' | 'swim' | 'walk' | 'hike' | 'other'
+export type ActivityType = 'run' | 'bike' | 'swim' | 'walk' | 'hike' | 'strength' | 'other'
 
 export interface Activity {
   id: string
@@ -179,6 +179,10 @@ export function normalizeActivityType(rawType: string): ActivityType {
     'open_water_swimming': 'swim',
     'walking': 'walk',
     'hiking': 'hike',
+    'strength_training': 'strength',
+    'gym_strength_training': 'strength',
+    'body_weight_workout': 'strength',
+    'indoor_climbing': 'strength',
 
     // Strava types
     'Run': 'run',
@@ -191,6 +195,9 @@ export function normalizeActivityType(rawType: string): ActivityType {
     'Swim': 'swim',
     'Walk': 'walk',
     'Hike': 'hike',
+    'WeightTraining': 'strength',
+    'Workout': 'strength',
+    'Crossfit': 'strength',
   }
 
   return typeMap[rawType] || 'other'
