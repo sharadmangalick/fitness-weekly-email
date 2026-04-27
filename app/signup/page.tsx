@@ -1,5 +1,10 @@
 'use client'
 
+// Skip the static prerender — this page initializes a Supabase browser
+// client at render time, which crashes in build environments that don't
+// carry the Supabase env vars (e.g. Vercel preview deploys).
+export const dynamic = 'force-dynamic'
+
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
