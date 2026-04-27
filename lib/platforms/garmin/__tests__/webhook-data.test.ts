@@ -247,6 +247,45 @@ describe('mergeWithWebhookData — activities', () => {
   })
 })
 
+describe('getWebhookHealthData — stress payload carries body battery', () => {
+  it('extracts body battery high/low from timeOffsetBodyBatteryValues', async () => {
+    const supabase = makeStubSupabase([
+      {
+        webhook_type: 'stress',
+        created_at: '2026-04-27T22:00:00Z',
+        payload: {
+          calendarDate: '2026-04-27',
+          timeOffsetBodyBatteryValues: { '0': 88, '900': 80, '1800': 60, '2700': 34 },
+          bodyBatteryActivityEvents: [
+            { eventType: 'SLEEP', bodyBatteryImpact: 81 },
+            { eventType: 'ACTIVITY', bodyBatteryImpact: -8 },
+            { eventType: 'STRESS', bodyBatteryImpact: -15 },
+          ],
+        },
+      },
+    ])
+
+    const out = await getWebhookHealthData(supabase, 'app-user-1', 30)
+    expect(out.dailySummaries).toHaveLength(1)
+    const day = out.dailySummaries[0]
+    expect(day.body_battery_high).toBe(88)
+    expect(day.body_battery_low).toBe(34)
+    expect(day.body_battery_charged).toBe(81)
+    expect(day.body_battery_drained).toBe(23) // |-8| + |-15|
+  })
+
+  it('skips stress payloads with no calendarDate or no BB data', async () => {
+    const supabase = makeStubSupabase([
+      { webhook_type: 'stress', created_at: '2026-04-27T22:00:00Z',
+        payload: { calendarDate: '2026-04-27' /* no BB at all */ } },
+      { webhook_type: 'stress', created_at: '2026-04-27T22:00:00Z',
+        payload: { /* no calendarDate */ timeOffsetBodyBatteryValues: { '0': 50 } } },
+    ])
+    const out = await getWebhookHealthData(supabase, 'app-user-1', 30)
+    expect(out.dailySummaries).toHaveLength(0)
+  })
+})
+
 describe('getWebhookHealthData — heart_rate (epoch) is not used for RHR', () => {
   it('does not produce a heartRate entry from a heart_rate (epoch) payload', async () => {
     // The Garmin "epochs" webhook is mislabeled in our pipeline as
