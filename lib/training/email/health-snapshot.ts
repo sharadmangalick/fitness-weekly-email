@@ -99,7 +99,7 @@ export function buildHealthSnapshot(analysis: AnalysisResults, platform?: 'garmi
     snapshot.push({
       metric: 'Sleep',
       value: `${analysis.sleep.avg_hours || 'N/A'} hrs avg`,
-      detail: `${analysis.sleep.under_6h_pct || 0}% nights under 6h`,
+      detail: `${analysis.sleep.under_6h_pct || 0}% of nights under 6h`,
       status: analysis.sleep.status || 'normal',
       emoji: getStatusEmoji(analysis.sleep.status || 'normal'),
     })
