@@ -131,9 +131,12 @@ export async function exchangeCodeForTokens(
   // Garmin returns expires_in (seconds from now), convert to expires_at (Unix timestamp)
   const expiresAt = Math.floor(Date.now() / 1000) + (data.expires_in || 3600)
 
-  // Garmin's token response doesn't carry user_id at the top level; the
-  // Garmin user id ("garmin_guid") is embedded inside the access-token JWT.
-  const garminUserId = data.user_id ?? extractGarminGuidFromAccessToken(data.access_token)
+  // Garmin's token response doesn't include the Wellness/Health API user
+  // id (which is what webhooks reference). The OAuth-side `garmin_guid`
+  // claim in the access-token JWT lives in a different namespace from the
+  // webhook userId. The canonical way to bridge them is calling
+  // /wellness-api/rest/user/id with the access token.
+  const garminUserId = data.user_id || await fetchGarminApiUserId(data.access_token, flowId)
 
   return {
     access_token: data.access_token,
@@ -145,18 +148,31 @@ export async function exchangeCodeForTokens(
 }
 
 /**
- * Decode the Garmin OAuth 2.0 access-token JWT and return the
- * `garmin_guid` claim, falling back to `sub` if present. Returns the
- * empty string when the token isn't a JWT we can read.
+ * Resolve the Garmin Wellness/Health API user id for a freshly issued
+ * access token. This id is what webhook deliveries carry as `userId`,
+ * so it's what we store on platform_connections.garmin_user_id and use
+ * for routing.
+ *
+ * Returns '' on failure — callers should treat that as an error so we
+ * don't persist a connection with no routing key.
  */
-function extractGarminGuidFromAccessToken(accessToken: string | undefined): string {
+async function fetchGarminApiUserId(accessToken: string, flowId?: string): Promise<string> {
   if (!accessToken) return ''
-  const parts = accessToken.split('.')
-  if (parts.length !== 3) return ''
   try {
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'))
-    return payload.garmin_guid || payload.sub || ''
-  } catch {
+    const resp = await fetch(`${GARMIN_API_BASE_URL}/user/id`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    })
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '')
+      log('error', 'Garmin /user/id call failed', {
+        flowId, status: resp.status, body: body.slice(0, 200),
+      })
+      return ''
+    }
+    const data = await resp.json()
+    return data.userId || ''
+  } catch (err) {
+    log('error', 'Garmin /user/id call threw', { flowId, err })
     return ''
   }
 }
@@ -216,7 +232,10 @@ export async function refreshAccessToken(
   })
 
   const expiresAt = Math.floor(Date.now() / 1000) + (data.expires_in || 3600)
-  const garminUserId = data.user_id ?? extractGarminGuidFromAccessToken(data.access_token)
+  // Refresh doesn't change the Wellness API user id — caller should
+  // preserve whatever's already stored on the connection. We avoid
+  // re-fetching /user/id here to keep the email cron's hot path fast.
+  const garminUserId = data.user_id || ''
 
   return {
     access_token: data.access_token,
