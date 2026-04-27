@@ -75,6 +75,26 @@ interface StressWebhookPayload {
   }>
 }
 
+/**
+ * Derive resting heart rate from a daily_summary's per-second HR samples.
+ * Garmin's published definition of RHR is "the average of the 30 lowest
+ * consecutive heart rate values during the day"; sorting all samples and
+ * taking the lowest 30 is a close approximation since the lowest values
+ * naturally cluster during overnight sleep.
+ *
+ * Returns null when there isn't enough data (some users / older devices
+ * deliver dailies without HR sample arrays).
+ */
+function deriveRestingHrFromSamples(samples: unknown): number | null {
+  if (!samples || typeof samples !== 'object') return null
+  const vals = Object.values(samples as Record<string, unknown>)
+    .filter((v): v is number => typeof v === 'number' && v > 0)
+  if (vals.length < 30) return null
+  vals.sort((a, b) => a - b)
+  const lowest30 = vals.slice(0, 30)
+  return Math.round(lowest30.reduce((a, b) => a + b, 0) / 30)
+}
+
 function readBodyBatteryFromStress(p: StressWebhookPayload): {
   date: string
   high?: number
@@ -228,24 +248,37 @@ export async function getWebhookHealthData(
       }
       case 'daily_summary': {
         const date = p.calendarDate || ''
-        if (!date || seenDailyDates.has(date)) break
-        seenDailyDates.add(date)
+        if (!date) break
 
-        // RHR + body battery do NOT live in this payload despite the
-        // webhook name; see the file header. Don't read them here.
-        dailySummaries.push({
-          date,
-          steps: p.steps || 0,
-          total_distance_miles: p.distanceInMeters ? metersToMiles(p.distanceInMeters) : undefined,
-          active_calories: p.activeKilocalories,
-          total_calories: p.bmrKilocalories,
-          sedentary_minutes: undefined,
-          active_minutes: p.activeTimeInSeconds ? Math.round(p.activeTimeInSeconds / 60) : undefined,
-          vigorous_minutes: p.vigorousIntensityDurationInSeconds
-            ? Math.round(p.vigorousIntensityDurationInSeconds / 60)
-            : undefined,
-          stress_level: p.averageStressLevel,
-        })
+        if (!seenDailyDates.has(date)) {
+          seenDailyDates.add(date)
+          // Body battery does NOT live in this payload despite the webhook
+          // name — that comes from the stress payload. RHR is derived
+          // separately below from the HR samples array.
+          dailySummaries.push({
+            date,
+            steps: p.steps || 0,
+            total_distance_miles: p.distanceInMeters ? metersToMiles(p.distanceInMeters) : undefined,
+            active_calories: p.activeKilocalories,
+            total_calories: p.bmrKilocalories,
+            sedentary_minutes: undefined,
+            active_minutes: p.activeTimeInSeconds ? Math.round(p.activeTimeInSeconds / 60) : undefined,
+            vigorous_minutes: p.vigorousIntensityDurationInSeconds
+              ? Math.round(p.vigorousIntensityDurationInSeconds / 60)
+              : undefined,
+            stress_level: p.averageStressLevel,
+          })
+        }
+
+        // RHR derivation: works automatically once a day, no Health Snapshot
+        // required. See deriveRestingHrFromSamples for the methodology.
+        if (!seenHRDates.has(date)) {
+          const restingHr = deriveRestingHrFromSamples(p.timeOffsetHeartRateSamples)
+          if (restingHr && restingHr > 0) {
+            seenHRDates.add(date)
+            heartRate.push({ date, resting_hr: restingHr })
+          }
+        }
         break
       }
       case 'health_snapshot': {
