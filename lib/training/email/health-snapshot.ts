@@ -115,14 +115,33 @@ export function buildHealthSnapshot(analysis: AnalysisResults, platform?: 'garmi
   }
 
   if (analysis.stress.available) {
+    // Prefer last-7-days stats; fall back to the 30-day window when no
+    // dailies have landed in the last week.
+    const weeklyAvail = (analysis.stress.weekly_total_days ?? 0) > 0
+    const avg = (weeklyAvail ? analysis.stress.weekly_avg : analysis.stress.avg) ?? 0
+    const elevated = (weeklyAvail
+      ? analysis.stress.weekly_high_stress_days
+      : analysis.stress.high_stress_days) ?? 0
+    const detail = elevated === 1 ? '1 elevated stress day' : `${elevated} elevated stress days`
     snapshot.push({
       metric: 'Stress',
-      value: `${analysis.stress.avg || 'N/A'} avg`,
-      detail: `${analysis.stress.high_stress_pct || 0}% high stress days`,
+      value: `${stressLabel(avg)} (${avg})`,
+      detail,
       status: analysis.stress.status || 'normal',
       emoji: getStatusEmoji(analysis.stress.status || 'normal'),
     })
   }
 
   return snapshot
+}
+
+/**
+ * Garmin's published stress score bands (0-100):
+ *   Rest 0-25 · Low 26-50 · Medium 51-75 · High 76-100
+ */
+function stressLabel(avg: number): string {
+  if (avg <= 25) return 'Rest'
+  if (avg <= 50) return 'Low'
+  if (avg <= 75) return 'Medium'
+  return 'High'
 }
