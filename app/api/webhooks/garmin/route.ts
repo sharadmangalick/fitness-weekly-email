@@ -113,25 +113,26 @@ export async function POST(request: NextRequest) {
       for (const activity of payload.activities) {
         const { userId: garminUserId, activityId, activityType } = activity
         try {
-          const isRunning = activityType?.toLowerCase().includes('run')
-          if (!isRunning) {
-            log('info', 'Skipping non-running activity', { activityId, activityType })
-            continue
-          }
-
+          // Persist every activity type (run, bike, strength, walk, etc.) —
+          // the weekly recap and adaptation rules cover cross-training, so
+          // dropping non-runs here was hiding real training volume from
+          // the rest of the pipeline.
           const connection = await insertDelivery(garminUserId, 'activity', activity)
           if (!connection) continue
 
-          // Trigger mileage recalculation async
-          fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/calculate-mileage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: connection.user_id })
-          }).catch(err => {
-            log('error', 'Failed to trigger mileage calculation', { error: err, userId: connection.user_id })
-          })
+          // Mileage recalc is run-specific — skip the trigger for non-runs.
+          const isRunning = activityType?.toLowerCase().includes('run')
+          if (isRunning) {
+            fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/calculate-mileage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: connection.user_id })
+            }).catch(err => {
+              log('error', 'Failed to trigger mileage calculation', { error: err, userId: connection.user_id })
+            })
+          }
 
-          log('info', 'Activity webhook stored', { activityId, userId: connection.user_id })
+          log('info', 'Activity webhook stored', { activityId, activityType, userId: connection.user_id })
         } catch (err) {
           log('error', 'Error processing activity', { error: err, activityId })
         }

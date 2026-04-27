@@ -44,13 +44,9 @@ export async function POST(request: NextRequest) {
       const { userId: garminUserId, activityId, activityType } = activity
 
       try {
-        const isRunning = activityType?.toLowerCase().includes('run')
-        if (!isRunning) {
-          log('info', 'Skipping non-running activity', { activityId, activityType })
-          continue
-        }
-
-        log('info', 'Processing running activity', { garminUserId, activityId, activityType })
+        // Persist every activity type (run, bike, strength, walk, etc.).
+        // The weekly recap + cross-training adaptation rules need them all.
+        log('info', 'Processing activity webhook', { garminUserId, activityId, activityType })
 
         const connection = await findConnectionByGarminUserId(supabase, garminUserId)
         if (!connection) {
@@ -81,17 +77,21 @@ export async function POST(request: NextRequest) {
 
         log('info', 'Activity webhook stored', {
           userId: connection.user_id,
-          activityId
+          activityId,
+          activityType,
         })
 
-        // Trigger mileage recalculation (async - don't wait)
-        fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/calculate-mileage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: connection.user_id })
-        }).catch(err => {
-          log('error', 'Failed to trigger mileage calculation', { error: err, userId: connection.user_id })
-        })
+        // Mileage recalc is run-specific — only trigger for runs.
+        const isRunning = activityType?.toLowerCase().includes('run')
+        if (isRunning) {
+          fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/calculate-mileage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: connection.user_id })
+          }).catch(err => {
+            log('error', 'Failed to trigger mileage calculation', { error: err, userId: connection.user_id })
+          })
+        }
 
         results.push({ activityId, status: 'success' })
 
