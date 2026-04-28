@@ -226,6 +226,9 @@ export function generateFirstWeekEmailHtml(
           <!-- Footer -->
           <tr>
             <td style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
+              <p style="color: #555; font-size: 13px; margin: 0 0 12px 0; padding-bottom: 12px; border-bottom: 1px solid #e5e5e5;">
+                Got this forwarded by a friend? <a href="https://runplan.fun" style="color: #667eea; text-decoration: underline; font-weight: 600;">Get your own free plan at runplan.fun</a>.
+              </p>
               <p style="color: #888; font-size: 13px; margin: 0 0 8px 0;">
                 Questions? Just reply to this email.
               </p>

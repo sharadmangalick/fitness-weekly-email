@@ -160,6 +160,9 @@ export function generateWelcomeEmailHtml(userName: string, dashboardUrl: string)
           <!-- Footer -->
           <tr>
             <td style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
+              <p style="color: #555; font-size: 13px; margin: 0 0 12px 0; padding-bottom: 12px; border-bottom: 1px solid #e5e5e5;">
+                Know a runner who'd like a free plan? <a href="https://runplan.fun" style="color: #667eea; text-decoration: underline; font-weight: 600;">Send them to runplan.fun</a>.
+              </p>
               <p style="color: #888; font-size: 12px; margin: 0 0 12px 0;">
                 Find this useful? A little support helps keep RunPlan running. <a href="https://www.runplan.fun/support" style="color: #764ba2; text-decoration: underline;">Support here</a>
               </p>
