@@ -120,6 +120,7 @@ This ensures future sessions always have accurate context. Small, incremental up
 - Use `gh` CLI for all GitHub operations
 - Title under 70 chars, body with `## Summary` + `## Test plan`
 - Review all commits with `git log main...HEAD` before creating
+- **After creating a PR, merge it automatically** with `gh pr merge <num> --squash --delete-branch` unless the user has asked to leave it open for review. Then `git checkout main && git pull` to sync local. Skip auto-merge only if: tests/build are failing, the change touches production-critical code (auth, payments, webhooks in unfamiliar ways), or the user explicitly said "don't merge".
 
 ---
 
